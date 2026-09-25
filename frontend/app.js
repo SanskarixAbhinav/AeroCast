@@ -47,7 +47,38 @@
       emptyT: "வானிலை மற்றும் விவசாய பரிந்துரைகள்", emptyD: "கேள்விகளைக் கேட்டு நேரலை வானிலை மற்றும் வரைபடத்தைப் பார்க்கவும்.",
       sevenDay: "7 நாள் முன்னறிவிப்பு", mapT: "📍 இருப்பிட வரைபடம்",
       disclaimer: "ஆலோசனைகள் முன்னறிவிப்பின் அடிப்படையிலானவை, அரசு எச்சரிக்கை அல்ல.",
-      retry: "மீண்டும் முயற்சிக்கவும்", timeout: "நேரம் முடிந்தது. மீண்டும் முயற்சிக்�  // --- 2. Mock Responses (CONFIG.USE_MOCK) ---
+      retry: "மீண்டும் முயற்சிக்கவும்", timeout: "நேரம் முடிந்தது. மீண்டும் முயற்சிக்கவும்.",
+      networkErr: "வானிலை சேவையுடன் இணைக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.",
+      voiceHint: "குரல் உள்ளீடு Google Chrome-இல் சிறப்பாக செயல்படும்.",
+      chips: ["நாளை கொல்கத்தாவில் மழை பெய்யுமா?", "நாளை கொல்கத்தாவில் பூச்சிக்கொல்லி தெளிப்பது பாதுகாப்பானதா?", "சென்னைக்கான 7 நாள் வானிலை முன்னறிவிப்பு", "கடந்த ஜூலையில் மும்பையில் எவ்வளவு மழை பெய்தது?", "கொல்கத்தா அருகில் புயல் உள்ளதா?"]
+    },
+    te: {
+      title: "వెదర్ జీపీటీ (WeatherGPT)", subtitle: "వాతావరణం & వ్యవసాయ సలహా సహాయకుడు",
+      placeholder: "వాతావరణం, వర్షం, పిచికారీ, నీటిపారుదల గురించి అడగండి...",
+      cyclone: "తుఫాను అనుకరణ", tts: "గట్టిగా చదవండి", thinking: "వెదర్ జీపీటీ ఆలోచిస్తోంది...",
+      emptyT: "వాతావరణ సమాచారం & సలహాలు", emptyD: "పరిస్థితులు, వ్యవసాయ నిర్ణయాలు & మ్యాప్ చూడటానికి ప్రశ్న అడగండి.",
+      sevenDay: "7-రోజుల సూచన", mapT: "📍 స్థాన మ్యాప్",
+      disclaimer: "సలహాలు సూచన పరిమితుల ఆధారంగా ఉన్నాయి, అధికారిక ప్రభుత్వ హెచ్చరికలు కావు.",
+      retry: "మళ్లీ ప్రయత్నించండి", timeout: "వాతావరణ అభ్యర్థన సమయం ముగిసింది. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      networkErr: "వాతావరణ సేవకు కనెక్ట్ చేయడం సాధ్యం కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.",
+      voiceHint: "వాయిస్ ఇన్‌పుట్ Google Chromeలో ఉత్తమంగా పనిచేస్తుంది.",
+      chips: ["రేపు కోల్‌కతాలో వర్షం పడుతుందా?", "రేపు కోల్‌కతాలో పురుగుమందులు పిచికారీ చేయడం సురక్షితమేనా?", "చెన్నైకి 7-రోజుల వాతావరణ సూచన", "గత జూలైలో ముంబైలో ఎంత వర్షం పడింది?", "కోల్‌కతా దగ్గర తుఫాను ఏదైనా ఉందా?"]
+    },
+    mr: {
+      title: "वेदरजीपीटी (WeatherGPT)", subtitle: "एआय हवामान आणि शेती सल्लागार",
+      placeholder: "हवामान, पाऊस, फवारणी, सिंचन याबद्दल विचारा...",
+      cyclone: "चक्रीवादळ सिम्युलेशन", tts: "मोठ्याने वाचा", thinking: "वेदरजीपीटी विचार करत आहे...",
+      emptyT: "हवामान माहिती आणि सल्ला", emptyD: "स्थिती, शेती निर्णय आणि नकाशा पाहण्यासाठी प्रश्न विचारा.",
+      sevenDay: "7-दिवसांचा अंदाज", mapT: "📍 स्थान नकाशा",
+      disclaimer: "सल्ला अंदाज मर्यादांवर आधारित आहे, अधिकृत सरकारी इशारा नाही.",
+      retry: "पुन्हा प्रयत्न करा", timeout: "हवामान विनंतीची वेळ संपली. कृपया पुन्हा प्रयत्न करा.",
+      networkErr: "हवामान सेवेशी कनेक्ट होऊ शकले नाही. कृपया पुन्हा प्रयत्न करा.",
+      voiceHint: "व्हॉइस इनपुट गुगल क्रोममध्ये उत्तम काम करते.",
+      chips: ["उद्या कोलकात्यात पाऊस पडेल का?", "उद्या कोलकात्यात कीटकनाशक फवारणी सुरक्षित आहे का?", "चेन्नईसाठी 7-दिवसांचा हवामान अंदाज", "गेल्या जुलैमध्ये मुंबईत किती पाऊस झाला?", "कोलकात्याजवळ चक्रीवादळ आहे का?"]
+    }
+  };
+
+  // --- 2. Mock Responses (CONFIG.USE_MOCK) ---
   const PLACES = [
     ["Kolkata", "Kolkata, West Bengal, India", 22.57, 88.36, /kolkata|calcutta|कलकत्ता|कोलकाता|কলকাতা|கொல்கத்தா|కోల్‌కతా/i],
     ["Mumbai", "Mumbai, Maharashtra, India", 19.07, 72.87, /mumbai|bombay|बम्बई|मुंबई|মুম্বাই|மும்பை|ముంబై/i],
@@ -78,103 +109,6 @@
     const qL = (q || "").toLowerCase().trim();
     const now = new Date().toISOString();
     const tmrw = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
-    const isWeather = /weather|rain|forecast|temp|temperature|spray|pesticide|harvest|irrigate|irrigation|cyclone|storm|wind|humidity|shower|climate|7-day|july|history|past|मौसम|बारिश|तापमान|कीटनाशक|सिंचाई|फसल|चक्रवात|पूर्वानुमान|হাওয়া|বৃষ্টি|স্প্রে|কীটনাশক|সেচ|ঘূর্ণিঝড়|পূর্বাভাস|வானிலை|மழை|தெளிப்பு|பூச்சிக்கொல்லி|பாசனம்|புயல்|முன்னறிவிப்பு|వాతావరణం|వర్షం|పిచికారీ|పురుగుమందు|సాగునీరు|తుఫాను|సూచన|हवामान|पाऊस|फवारणी|कीटकनाशक|सिंचन|चक्रीवादळ|अंदाज/i.test(qL) || demo === "cyclone";
-
-    let loc = null;
-    for (const p of PLACES) { if (p.match.test(qL)) { loc = p; break; } }
-    const prepMatch = qL.match(/\b(?:in|for|at|near|of)\s+([a-zA-Z\u0080-\uFFFF]+)\b/i);
-    const hasUnrecognizedPlace = prepMatch && !/tomorrow|today|yesterday|week|july|spray|pesticide|harvest|irrigation|cyclone|weather|forecast|rain|me|us|the|a|an|this|next/i.test(prepMatch[1]) && !loc;
-
-    if ((!isWeather && !loc) || hasUnrecognizedPlace) {
-      return { answer: "Please tell me which city or place you mean", facts: null, alerts: [], meta: { source: "Open-Meteo", fetched_at: now, from_cache: false, stale: false } };
-    }
-    if (!loc) loc = PLACES[0];
-
-    if (demo === "cyclone" || /cyclone|storm|चक्रवात|ঘূর্ণিঝড়|புயல்|తుఫాను|चक्रीवादळ/i.test(qL)) {
-      const basin = loc.lon > 80 ? "Bay of Bengal" : "Arabian Sea";
-      return {
-        answer: `A severe cyclonic storm 'Cyclone DEMO' is active over the ${basin} with winds reaching 110 km/h near ${loc.name}. Coastal fishermen are advised not to venture into the sea.`,
-        facts: {
-          topic: "cyclone", location: loc.label, lat: loc.lat, lon: loc.lon, stale: false,
-          day: { date: tmrw, temp_max: 29, temp_min: 24, rain_mm: 85, rain_prob: 90, wind_max_kmh: 65, gust_max_kmh: 95, et0_mm: 2 },
-          cyclone: { name: "Cyclone DEMO", basin, category: "Severe Cyclonic Storm", max_wind_kmh: 110, landfall_estimate: "Coastal area in 36h", advisory: "Fishermen should not go to sea.", simulated: true }
-        },
-        alerts: [{ type: "cyclone", level: "red", date: tmrw, message: "SIMULATED: Cyclone DEMO. Max wind 110 km/h.", simulated: true, official: false }],
-        meta: { source: "Open-Meteo", fetched_at: now, from_cache: false, stale: false }
-      };
-    }
-
-    if (/spray|pesticide|कीटनाशक|কীটনাশক|பூச்சிக்கொல்லி|పురుగుమందు|फवारणी/i.test(qL)) {
-      return {
-        answer: `Spraying pesticides in ${loc.name} tomorrow is not advisable due to expected rain and wind speeds exceeding 15 km/h.`,
-        facts: {
-          topic: "spray", location: loc.label, lat: loc.lat, lon: loc.lon, stale: false,
-          day: { date: tmrw, temp_max: 31, temp_min: 25, rain_mm: 22, rain_prob: 75, wind_max_kmh: 24, gust_max_kmh: 42, et0_mm: 3.2 },
-          flags: { spray_safe: false, reason: ["rain likely", "wind>15"], window: `${tmrw}T06:00 to ${tmrw}T18:00`, max_rain_prob: 75, max_wind_kmh: 24, max_temp_c: 31 }
-        },
-        alerts: getRainAlerts(22, tmrw), meta: { source: "Open-Meteo", fetched_at: now, from_cache: false, stale: false }
-      };
-    }
-
-    if (/forecast|7-day|पूर्वानुमान|পূর্বাভাস|முன்னறிவிப்பு|సూచన|अंदाज/i.test(qL)) {
-      const daily = [];
-      for (let i = 0; i < 7; i++) {
-        daily.push({
-          date: new Date(Date.now() + i * 864e5).toISOString().slice(0, 10),
-          temp_max: 33 - (i % 3), temp_min: 26 - (i % 2),
-          rain_mm: (i % 2 === 0) ? 12 : 2, rain_prob: (i % 2 === 0) ? 65 : 20,
-          wind_max_kmh: 18 + i, gust_max_kmh: 30 + i, et0_mm: 4.2
-        });
-      }
-      return {
-        answer: `${loc.name} will see warm temperatures around 26-33 C with moderate showers on alternate days over the next 7 days.`,
-        facts: { topic: "forecast", location: loc.label, lat: loc.lat, lon: loc.lon, stale: false, day: daily[0], daily: daily },
-        alerts: [], meta: { source: "Open-Meteo", fetched_at: now, from_cache: true, stale: false }
-      };
-    }
-
-    if (/july|history|past|गेल्या|கடந்த|గత|গত|पिछले/i.test(qL)) {
-      return {
-        answer: `${loc.name} recorded 640 mm of total rain between 2026-07-01 and 2026-07-31, with an average max temperature of 31.2 C. The rainiest day had 120 mm.`,
-        facts: {
-          topic: "history", location: loc.label, lat: loc.lat, lon: loc.lon, stale: false,
-          history: { start: "2026-07-01", end: "2026-07-31", total_rain_mm: 640, avg_temp_max: 31.2, rainiest_day: { date: "2026-07-18", rain_mm: 120 } }
-        },
-        alerts: [], meta: { source: "Open-Meteo archive", fetched_at: now, from_cache: true, stale: false }
-      };
-    }
-
-    let rainMm = 18;
-    const rMatch = qL.match(/rain_mm\s*[:=]\s*(\d+(?:\.\d+)?)|(\d+(?:\.\d+)?)\s*mm\b|rain(?:fall)?\s*(?:of|is|:|=)?\s*(\d+(?:\.\d+)?)/i);
-    const parsed = rMatch ? parseFloat(rMatch[1] || rMatch[2] || rMatch[3]) : NaN;
-    if (!isNaN(parsed)) {
-      rainMm = parsed;
-    } else if (/heavy\s*rain|भारी\s*बारिश|ভারী\s*বৃষ্টি|கனமழை|భారీ\s*వర్షం|मुसळधार\s*पाऊस/i.test(qL)) {
-      rainMm = 70;
-    }
-
-    return {
-      answer: `${loc.name} tomorrow: temperatures 26-32 C, ${rainMm} mm rain (${rainMm >= 64.5 ? 85 : 70}% probability), wind up to 22 km/h.`,
-      facts: {
-        topic: "rain", location: loc.label, lat: loc.lat, lon: loc.lon, stale: false,
-        current: { time: now, temperature_2m: 30.5, relative_humidity_2m: 76, precipitation: 0, wind_speed_10m: 14, wind_gusts_10m: 26 },
-        day: { date: tmrw, temp_max: 32, temp_min: 26, rain_mm: rainMm, rain_prob: rainMm >= 64.5 ? 85 : 70, wind_max_kmh: 22, gust_max_kmh: 40, et0_mm: 3.5 },
-        flags: { irrigate: false, reason: ["enough rain expected in next 2 days"], rain_next_2_days_mm: rainMm + 7, et0_mm: 3.5 }
-      },
-      alerts: getRainAlerts(rainMm, tmrw),
-      meta: { source: "Open-Meteo", fetched_at: now, from_cache: false, stale: false }
-    };
-  }     alerts.push({ type: "very_heavy_rain", level: "red", date, message: `Very heavy rain expected (${rainMm} mm).`, simulated: false, official: false });
-    } else if (rainMm >= 64.5) {
-      alerts.push({ type: "heavy_rain", level: "orange", date, message: `Heavy rain expected (${rainMm} mm).`, simulated: false, official: false });
-    }
-    return alerts;
-  }
-
-  function getMock(q, lang, demo) {
-    const qL = (q || "").toLowerCase().trim();
-    const now = new Date().toISOString();
-    const tmrw = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
 
     const isWeather = /weather|rain|forecast|temp|temperature|spray|pesticide|harvest|irrigate|irrigation|cyclone|storm|wind|humidity|shower|climate|7-day|july|history|past|मौसम|बारिश|तापमान|कीटनाशक|सिंचाई|फसल|चक्रवात|पूर्वानुमान|হাওয়া|বৃষ্টি|স্প্রে|কীটনাশক|সেচ|ঘূর্ণিঝড়|পূর্বাভাস|வானிலை|மழை|தெளிப்பு|பூச்சிக்கொல்லி|பாசனம்|புயல்|முன்னறிவிப்பு|వాతావరణం|వర్షం|పిచికారీ|పురుగుమందు|సాగునీరు|తుఫాను|సూచన|हवामान|पाऊस|फवारणी|कीटकनाशक|सिंचन|चक्रीवादळ|अंदाज/i.test(qL) || demo === "cyclone";
 
@@ -184,7 +118,7 @@
     }
 
     const prepMatch = qL.match(/\b(?:in|for|at|near|of)\s+([a-zA-Z\u0080-\uFFFF]+)\b/i);
-    const hasUnrecognizedPlace = prepMatch && !/tomorrow|today|yesterday|week|july|spray|pesticide|harvest|irrigation|cyclone|weather|forecast|rain|me|us|the|a|an|this|next/i.test(prepMatch[1]) && !loc;
+    const hasUnrecognizedPlace = prepMatch && !/\b(?:tomorrow|today|yesterday|week|july|spray|pesticide|harvest|irrigation|cyclone|weather|forecast|rain|me|us|the|a|an|this|next)\b/i.test(prepMatch[1]) && !loc;
 
     if ((!isWeather && !loc) || hasUnrecognizedPlace) {
       return {
