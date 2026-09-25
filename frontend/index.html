@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="WeatherGPT - Multilingual AI Weather & Farming Assistant for India">
+  <title>WeatherGPT | AI Weather & Agro Advisory</title>
+  
+  <!-- Leaflet Map CSS from cdnjs -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="" />
+  
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- App Container -->
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true">🌦️</div>
+        <div>
+          <h1 class="brand-title" id="ui-title">WeatherGPT</h1>
+          <p class="brand-sub" id="ui-subtitle">AI Weather & Farming Advisory</p>
+        </div>
+      </div>
+
+      <!-- Controls -->
+      <div class="header-actions">
+        <!-- Language Selector -->
+        <label for="langSelect" class="sr-only">Choose Language</label>
+        <select id="langSelect" class="ctrl-select" aria-label="Choose Language">
+          <option value="en">English</option>
+          <option value="hi">हिंदी (Hindi)</option>
+          <option value="bn">বাংলা (Bengali)</option>
+          <option value="ta">தமிழ் (Tamil)</option>
+          <option value="te">తెలుగు (Telugu)</option>
+          <option value="mr">मराठी (Marathi)</option>
+        </select>
+
+        <!-- Cyclone Simulation Switch -->
+        <label class="toggle-control" title="Simulate Cyclone alert">
+          <input type="checkbox" id="cycloneToggle">
+          <span class="toggle-slider"></span>
+          <span class="toggle-label" id="ui-cyclone-label">Simulate cyclone</span>
+        </label>
+
+        <!-- Read Aloud Switch -->
+        <label class="toggle-control" title="Read answers aloud">
+          <input type="checkbox" id="ttsToggle">
+          <span class="toggle-slider"></span>
+          <span class="toggle-label" id="ui-tts-label">Read aloud</span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Main Workspace (Desktop: 2 columns; Mobile: 1 column) -->
+    <main class="main-content">
+      <!-- Left Column: Chat Conversation -->
+      <section class="chat-section" aria-label="Conversation">
+        <!-- Question suggestions chips -->
+        <div class="chips-wrapper" aria-label="Sample questions">
+          <div class="chips-container" id="chipsContainer">
+            <!-- Rendered dynamically by app.js based on selected language -->
+          </div>
+        </div>
+
+        <!-- Chat message thread -->
+        <div class="chat-thread" id="chatThread" role="log" aria-live="polite">
+          <!-- Messages inserted dynamically -->
+        </div>
+
+        <!-- Typing Indicator -->
+        <div class="typing-indicator" id="typingIndicator" style="display: none;" aria-hidden="true">
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <span class="typing-text" id="ui-thinking">WeatherGPT is thinking...</span>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="input-panel">
+          <form id="chatForm" class="chat-form">
+            <!-- Voice Input Mic Button -->
+            <button type="button" id="micBtn" class="btn-icon btn-mic" aria-label="Voice input" title="Click to speak">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" y1="19" x2="12" y2="22"></line>
+              </svg>
+            </button>
+
+            <!-- Text Input Field -->
+            <input
+              type="text"
+              id="chatInput"
+              class="chat-input"
+              placeholder="Ask about weather, rain, spraying, irrigation..."
+              autocomplete="off"
+              aria-label="Ask weather question"
+              maxlength="500"
+            />
+
+            <!-- Send Button -->
+            <button type="submit" id="sendBtn" class="btn-icon btn-send" aria-label="Send message">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </form>
+          <div class="voice-hint" id="voiceHint"></div>
+        </div>
+      </section>
+
+      <!-- Right Column: Weather Fact Card & Map -->
+      <section class="facts-section" aria-label="Weather Facts & Map">
+        <!-- Alerts Banner List -->
+        <div id="alertsContainer" class="alerts-container" aria-live="assertive"></div>
+
+        <!-- Data Card -->
+        <div id="dataCard" class="data-card" style="display: none;">
+          <!-- Card Header -->
+          <div class="card-header">
+            <div>
+              <h2 id="cardLocation" class="card-location">Location</h2>
+              <div id="cardUpdated" class="card-updated"></div>
+            </div>
+            <div id="cardStaleBadge" class="stale-badge" style="display: none;">⚠️ Data may be out of date</div>
+          </div>
+
+          <!-- Cyclone Panel (when present) -->
+          <div id="cyclonePanel" class="cyclone-panel" style="display: none;"></div>
+
+          <!-- Farming Verdict Badge -->
+          <div id="verdictContainer" class="verdict-container" style="display: none;"></div>
+
+          <!-- Current Conditions Grid -->
+          <div id="currentConditions" class="conditions-grid" style="display: none;"></div>
+
+          <!-- Day Summary -->
+          <div id="daySummary" class="day-summary" style="display: none;"></div>
+
+          <!-- 7-Day Forecast Strip -->
+          <div id="dailyStripContainer" class="daily-strip-container" style="display: none;">
+            <h3 class="section-title" id="ui-7day-title">7-Day Outlook</h3>
+            <div id="dailyStrip" class="daily-strip"></div>
+          </div>
+
+          <!-- Past History Summary -->
+          <div id="historyPanel" class="history-panel" style="display: none;"></div>
+
+          <!-- Disclaimer Note -->
+          <div class="advisory-disclaimer" id="ui-disclaimer">
+            Advisories are based on forecast thresholds, not official government warnings.
+          </div>
+        </div>
+
+        <!-- Empty state placeholder for data card -->
+        <div id="dataCardPlaceholder" class="card-placeholder">
+          <div class="placeholder-icon">🌱</div>
+          <h3 id="ui-empty-title">Weather Insights & Advisories</h3>
+          <p id="ui-empty-desc">Ask a weather question to see live conditions, farm decisions (spray, irrigation, harvest), and interactive map details here.</p>
+        </div>
+
+        <!-- Map Container -->
+        <div id="mapWrapper" class="map-wrapper" style="display: none;">
+          <div class="map-header">
+            <span class="map-title" id="ui-map-title">📍 Location Map</span>
+          </div>
+          <div id="weatherMap" class="weather-map" role="region" aria-label="Weather location map"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Leaflet Map JS from cdnjs -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGUkgiQnQBuyGDxTy3dzlx9ROXFUueFKeIO++ETaRJIQXr+8gVC7KvpVVIhQ==" crossorigin=""></script>
+
+  <!-- Runtime Config & App Logic -->
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
