@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { transformSync } from '../frontend/node_modules/esbuild/lib/main.js';
+import { stripTypeScriptTypes } from 'node:module';
 
 const files = [
   'supabase/functions/health/index.ts',
@@ -23,7 +23,7 @@ for (const file of files) {
   const fullPath = path.resolve('d:/AeroCast', file);
   try {
     const code = fs.readFileSync(fullPath, 'utf8');
-    transformSync(code, { loader: 'ts' });
+    stripTypeScriptTypes(code);
     console.log(`✔ ${file} (Syntax valid)`);
   } catch (err) {
     console.error(`✖ ${file} Failed:`, err.message);

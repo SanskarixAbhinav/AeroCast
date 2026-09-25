@@ -44,6 +44,16 @@ export function templateAnswer(f: any): string {
     else if (f.flags.harvest_ok === false) parts.push(`Harvesting: not advisable (${why}).`);
     if (f.flags.irrigate === true) parts.push(`Irrigation: recommended (${why}).`);
     else if (f.flags.irrigate === false) parts.push(`Irrigation: not needed (${why}).`);
+    if (f.flags.marine_safe === true) parts.push(`Marine advisory: conditions are suitable for small craft and fishing (waves ${f.flags.wave_height_m} m, wind ${f.flags.max_wind_kmh} km/h).`);
+    else if (f.flags.marine_safe === false) parts.push(`Marine advisory: not advisable for small craft or fishing (${why}).`);
+    else if (f.flags.marine_safe === null && f.marine && !f.marine.is_coastal) parts.push(`${f.location} is an inland location. Marine wave forecasts are only available for coastal waters.`);
+  }
+  if (f.marine && !f.marine.is_coastal && (!f.flags || f.flags.marine_safe === undefined)) {
+    parts.push(`${f.location} is an inland location. Marine wave forecasts are only available for coastal waters.`);
+  }
+  if (f.model_comparison) {
+    const mc = f.model_comparison;
+    parts.push(`Model comparison: GFS (${mc.gfs.temp_max} C, ${mc.gfs.rain_prob}%) and ECMWF (${mc.ecmwf.temp_max} C, ${mc.ecmwf.rain_prob}%).`);
   }
   for (const a of f.alerts ?? []) parts.push(`${a.simulated ? "[SIMULATED] " : ""}${a.message}`);
   if (f.stale) parts.push("Note: this data may be slightly out of date.");

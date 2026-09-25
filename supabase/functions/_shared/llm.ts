@@ -14,7 +14,7 @@ export const LANGS: Record<string, string> = {
 
 export const TOPICS = [
   "current", "forecast", "rain", "temperature", "wind",
-  "spray", "irrigation", "harvest", "history", "cyclone", "other",
+  "spray", "irrigation", "harvest", "marine", "history", "cyclone", "other",
 ] as const;
 export type Topic = typeof TOPICS[number];
 
@@ -72,7 +72,8 @@ function fallbackParseIntent(q: string): Intent {
 
   // Topic detection
   let topic: Topic = "other";
-  if (/spray|pesticide|fungicide|fertilizer|insecticide/i.test(qLower)) topic = "spray";
+  if (/marine|sea|ocean|wave|swell|boat|fisherm|समुद्र|मछुआरे|সাগর|জেলে|கடல்|மீனவர்|సముద్రం|మత్స్యకారులు|मच्छीमार/i.test(qLower)) topic = "marine";
+  else if (/spray|pesticide|fungicide|fertilizer|insecticide/i.test(qLower)) topic = "spray";
   else if (/irrigat|water the crop|watering/i.test(qLower)) topic = "irrigation";
   else if (/harvest|cutting|reap/i.test(qLower)) topic = "harvest";
   else if (/cyclone|storm|hurricane|typhoon/i.test(qLower)) topic = "cyclone";
@@ -121,7 +122,7 @@ Reply with JSON only, exactly this shape:
 - location: the city or town in English (romanized), or null if none is named.
 - date: "today", "tomorrow", "day_after", or "YYYY-MM-DD". Default "today".
 - topic: one of ${TOPICS.join(", ")}.
-  "forecast" = multi-day / 7-day outlook. "history" = weather in the past. "spray"/"irrigation"/"harvest" = farming decisions. "cyclone" = cyclone or storm status. "other" = not about weather.
+  "forecast" = multi-day / 7-day outlook. "history" = weather in the past. "spray"/"irrigation"/"harvest" = farming decisions. "marine" = coastal, sea conditions, wave height & fishermen safety. "cyclone" = cyclone or storm status. "other" = not about weather.
 - language: ISO 639-1 code of the question's language.
 - start, end: only for topic "history": the date range as YYYY-MM-DD. Today is ${today}. Otherwise null.
 Do not answer the question.`;
@@ -151,8 +152,10 @@ export async function narrate(facts: unknown, question: string, lang: string): P
   const system = `You are WeatherGPT, a weather assistant for users in India.
 Use ONLY the facts JSON provided. If a value is missing, say it is unavailable.
 Never add or estimate numbers, dates or places that are not in the facts.
-Reply in ${LANGS[lang] ?? "English"} in plain, simple words a farmer can follow, in at most 4 sentences.
+Reply in ${LANGS[lang] ?? "English"} in plain, simple words a farmer or coastal fisherman can follow, in at most 4 sentences.
 Write all numbers with digits 0-9.
+If marine data is present, state clearly whether sea conditions are safe for coastal fishermen and small craft. If the location is inland/non-coastal, clearly state that marine wave data is only available for coastal regions.
+If model comparison is present, mention whether independent forecast models agree.
 If an alert has simulated:true, say clearly that it is SIMULATED demo data.
 Call alerts "advisories", never official warnings.
 If facts.stale is true, mention the data may be slightly out of date.

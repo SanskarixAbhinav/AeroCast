@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+    <linearGradient id="sun" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde047" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+    <linearGradient id="cloud" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+    <linearGradient id="drop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#0284c7" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background rounded squircle -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)" />
+
+  <!-- Sun Rays & Disc -->
+  <g transform="translate(310, 165)">
+    <circle r="72" fill="url(#sun)" />
+    <!-- Rays -->
+    <path d="M 0 -96 L 0 -80 M 0 80 L 0 96 M -96 0 L -80 0 M 80 0 L 96 0 M -68 -68 L -56 -56 M 56 56 L 68 68 M -68 68 L -56 56 M 56 -56 L 68 -68" stroke="#f59e0b" stroke-width="8" stroke-linecap="round" />
+  </g>
+
+  <!-- Cloud -->
+  <path d="M 180 340 L 350 340 C 385 340 412 312 412 278 C 412 248 390 222 360 216 C 352 172 314 138 268 138 C 230 138 198 160 182 194 C 176 192 168 190 162 190 C 122 190 90 222 90 262 C 90 305 125 340 180 340 Z" fill="url(#cloud)" filter="drop-shadow(0 12px 16px rgba(0,0,0,0.35))" />
+
+  <!-- Raindrops -->
+  <g fill="url(#drop)">
+    <path d="M 175 370 C 175 370 162 395 162 405 C 162 412 168 418 175 418 C 182 418 188 412 188 405 C 188 395 175 370 175 370 Z" />
+    <path d="M 245 370 C 245 370 232 395 232 405 C 232 412 238 418 245 418 C 252 418 258 412 258 405 C 258 395 245 370 245 370 Z" />
+    <path d="M 315 370 C 315 370 302 395 302 405 C 302 412 308 418 315 418 C 322 418 328 412 328 405 C 328 395 315 370 315 370 Z" />
+  </g>
+
+  <!-- Green crop sprout accent -->
+  <g transform="translate(370, 390)">
+    <path d="M 0 35 C 0 10 18 0 32 -5 C 22 18 10 32 0 35 Z" fill="#10b981" />
+    <path d="M 0 35 C -5 20 -18 12 -28 10 C -18 26 -8 32 0 35 Z" fill="#34d399" />
+  </g>
+</svg>

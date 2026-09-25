@@ -25,18 +25,21 @@ weathergpt/
 │       │   └── guard.ts                # Number guard (rejects hallucinated numbers)
 │       ├── chat/index.ts               # POST /chat pipeline with per-IP rate limiting
 │       └── health/index.ts             # GET /health endpoint
-├── frontend/                           # React + Vite frontend application
-│   ├── src/                            # App.jsx, index.css, main.jsx
-│   ├── index.html                      # HTML5 entry with Google Fonts
-│   ├── vite.config.js                  # Vite bundler config
-│   ├── vercel.json                     # Vercel SPA routing rewrite
-│   ├── netlify.toml                    # Netlify SPA routing rewrite
-│   └── .env.example                    # Frontend environment placeholder (VITE_SUPABASE_URL)
+├── frontend/                           # Plain static HTML5 / Vanilla JS frontend (no build step)
+│   ├── index.html                      # HTML5 entry with Leaflet CDN & Google Fonts
+│   ├── app.js                          # Vanilla JavaScript UI logic, i18n & rendering (<520 lines)
+│   ├── style.css                       # Responsive layout & high-contrast themes
+│   ├── config.js                       # Runtime configuration (API_URL, USE_MOCK, ANON_KEY)
+│   ├── vercel.json                     # Vercel static routing config
+│   ├── netlify.toml                    # Netlify static routing config
+│   └── README.md                       # Frontend quickstart documentation
 ├── tests/
 │   ├── test_units.mjs                  # Offline tests: guard, dates, advisory, alerts
+│   ├── test_frontend.mjs               # Frontend DOM & syntax acceptance tests
 │   └── test_live_apis.mjs              # Online tests: Open-Meteo geocoding, forecast, archive
-├── .env.example                        # Global environment variables template
-└── README.md                           # Documentation & deployment guide
+├── server.mjs                          # Standalone Node.js static & API test server
+├── package.json                        # Project metadata & npm test/start scripts
+└── README.local.md                     # Documentation & deployment guide
 ```
 
 ---
@@ -54,7 +57,7 @@ weathergpt/
 
 ---
 
-## Environment Variables
+## Environment & Configuration
 
 ### Backend Secrets (Supabase)
 | Variable | Description | Default / Example |
@@ -64,13 +67,17 @@ weathergpt/
 | `SUPABASE_URL` | Auto-injected in hosted Edge Functions | `https://<ref>.supabase.co` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Auto-injected in hosted Edge Functions | `eyJ...` |
 
-### Frontend Variables (Vite)
-| Variable | Description | Example |
-| :--- | :--- | :--- |
-| `VITE_SUPABASE_URL` | Base URL of your Supabase project | `https://YOUR_PROJECT_REF.supabase.co` |
-
 > [!CAUTION]
 > **Never** expose `GEMINI_API_KEY` or `SUPABASE_SERVICE_ROLE_KEY` in frontend code or repository commits.
+
+### Frontend Configuration (`frontend/config.js`)
+The frontend is pure static HTML/CSS/JS with **no build step, no npm dependencies, and no bundler (no Vite)**. Runtime settings are configured directly in [`frontend/config.js`](frontend/config.js):
+
+| Setting | Description | Default / Example |
+| :--- | :--- | :--- |
+| `API_URL` | Base URL of your Supabase Edge Function chat endpoint | `"https://cefbgewshgyekkkwcqxb.supabase.co/functions/v1/chat"` |
+| `USE_MOCK` | Toggle built-in canned responses (`true`) vs live Supabase backend (`false`) | `false` |
+| `ANON_KEY` | Optional: Supabase Anon Key (if JWT verification is enabled) | `""` |
 
 ---
 
@@ -106,45 +113,57 @@ npx supabase functions deploy chat --no-verify-jwt
 npx supabase functions deploy health --no-verify-jwt
 ```
 
-### Step 2: Deploy Frontend
+### Step 2: Run / Host Frontend
 
-#### Option A: Run Locally
+Because the frontend consists only of static files (`index.html`, `app.js`, `style.css`, `config.js`), there is **no build step, no Vite, and no compilation required**.
+
+#### Option A: Run Locally on Localhost
+
+From the workspace root:
+
 ```powershell
-# 1. Navigate to the frontend directory
-cd frontend
-
-# 2. Create your local environment file
-Copy-Item .env.example .env
-
-# 3. Open .env and set your Supabase project URL:
-# VITE_SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
-
-# 4. Start local development server
-npm run dev
+# Using the built-in Node server
+npm start
+# or
+node server.mjs
 ```
-Open `http://localhost:5173` in your browser.
+Open **[http://localhost:3000](http://localhost:3000)** in your browser.
+
+Alternatively, using Python 3:
+```powershell
+python -m http.server 3000 --directory frontend
+```
+Or with Node's static `serve`:
+```powershell
+npx serve frontend
+```
 
 #### Option B: Deploy to Vercel
 1. Import repository on [vercel.com](https://vercel.com).
 2. Set **Root Directory** to `frontend`.
-3. Under **Environment Variables**, add:
-   - `VITE_SUPABASE_URL` = `https://YOUR_PROJECT_REF.supabase.co`
-4. Click **Deploy**.
+3. Set **Framework Preset** to `Other` (no build command needed).
+4. Update `frontend/config.js` with your production Supabase Edge Function URL.
+5. Click **Deploy**.
 
 #### Option C: Deploy to Netlify
 1. Import repository on [netlify.com](https://netlify.com).
 2. Set **Base directory** to `frontend`.
-3. Set **Build command** to `npm run build`.
-4. Set **Publish directory** to `frontend/dist`.
-5. Under **Environment Variables**, add:
-   - `VITE_SUPABASE_URL` = `https://YOUR_PROJECT_REF.supabase.co`
-6. Click **Deploy**.
+3. Leave **Build command** empty.
+4. Set **Publish directory** to `frontend` (or `.` if base directory is set to `frontend`).
+5. Click **Deploy**.
+
+#### Option D: Deploy to GitHub Pages
+1. Push the repository to GitHub.
+2. Go to **Settings** → **Pages**.
+3. Under **Build and deployment**, select **Deploy from a branch**.
+4. Select your branch and set `/frontend` as the folder.
+5. Click **Save**.
 
 ---
 
 ## API Testing (Exact Commands)
 
-Replace `<YOUR_PROJECT_REF>` with your Supabase project reference (or use `http://127.0.0.1:54321` if running locally).
+Replace `<YOUR_PROJECT_REF>` with your Supabase project reference (or use `https://cefbgewshgyekkkwcqxb.supabase.co`).
 
 ### 1. Health Check (`/health`)
 
@@ -325,12 +344,14 @@ Test loop in PowerShell:
 
 ## Running Local Unit & Integration Tests
 
-The repository includes both offline and live integration test suites:
+The repository includes offline unit tests, frontend acceptance tests, and live integration test suites:
 
 ```powershell
-# Run unit tests (numbers guard, date resolver, advisories, alert thresholds)
-node tests/test_units.mjs
+# Run the entire test suite via npm
+npm test
 
-# Run live API tests (Open-Meteo geocoding, 7-day forecast, archive history)
-node tests/test_live_apis.mjs
+# Or run individual test suites directly:
+node tests/test_units.mjs      # Unit tests (numbers guard, date resolver, advisories, alerts)
+node tests/test_frontend.mjs   # Frontend acceptance tests (DOM IDs, config.js, app.js constraints)
+node tests/test_live_apis.mjs  # Live Open-Meteo API tests (geocoding, 7-day forecast, archive)
 ```

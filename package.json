@@ -1,0 +1,26 @@
+{
+  "name": "aerocast",
+  "version": "1.0.0",
+  "description": "WeatherGPT / AeroCast - Hyperlocal AI Weather & Agro Advisory Assistant for India",
+  "type": "module",
+  "main": "server.mjs",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs",
+    "serve": "node server.mjs",
+    "test": "node tests/test_units.mjs && node tests/test_frontend.mjs && node tests/test_live_apis.mjs",
+    "test:unit": "node tests/test_units.mjs",
+    "test:frontend": "node tests/test_frontend.mjs",
+    "test:live": "node tests/test_live_apis.mjs"
+  },
+  "keywords": [
+    "weather",
+    "agroadvisory",
+    "farming",
+    "open-meteo",
+    "gemini",
+    "india"
+  ],
+  "author": "AeroCast Team",
+  "license": "MIT"
+}

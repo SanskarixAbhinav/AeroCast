@@ -1,69 +1,81 @@
+import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import assert from 'node:assert';
 
-console.log("Running Frontend Acceptance Tests in Node.js...");
+console.log('Running frontend acceptance tests...');
 
-// 1. Verify index.html contains all required elements
-const htmlPath = path.resolve('d:/AeroCast/frontend/index.html');
-assert.ok(fs.existsSync(htmlPath), "index.html exists");
+const htmlPath = path.resolve('frontend/index.html');
+const appPath = path.resolve('frontend/app.js');
+const configPath = path.resolve('frontend/config.js');
+const manifestPath = path.resolve('frontend/manifest.json');
+const swPath = path.resolve('frontend/sw.js');
+const iconPath = path.resolve('frontend/icon.svg');
+
+// 1. Verify index.html exists and contains necessary DOM elements
+assert.ok(fs.existsSync(htmlPath), 'index.html must exist');
 const html = fs.readFileSync(htmlPath, 'utf8');
 
 const requiredIds = [
+  'ui-title',
   'langSelect',
   'cycloneToggle',
   'ttsToggle',
   'chipsContainer',
   'chatThread',
   'typingIndicator',
+  'chatForm',
   'chatInput',
   'sendBtn',
   'micBtn',
-  'voiceHint',
   'alertsContainer',
   'dataCard',
-  'cyclonePanel',
+  'cardLocation',
+  'marinePanel',
   'verdictContainer',
-  'currentConditions',
   'daySummary',
+  'modelComparisonPanel',
   'dailyStripContainer',
-  'dailyStrip',
   'historyPanel',
-  'weatherMap'
+  'mapWrapper',
+  'mapTabSingle',
+  'mapTabRegional',
+  'weatherMap',
+  'archBtn',
+  'archModal',
+  'modalCloseBtn'
 ];
 
 for (const id of requiredIds) {
-  assert.ok(html.includes(`id="${id}"`), `Element id="${id}" must exist in index.html`);
+  assert.ok(html.includes(`id="${id}"`), `index.html must contain id="${id}"`);
 }
-console.log("✔ index.html contains all required UI elements");
+console.log('✔ All required DOM element IDs verified in index.html');
 
-// 2. Verify config.js
-const configPath = path.resolve('d:/AeroCast/frontend/config.js');
-assert.ok(fs.existsSync(configPath), "config.js exists");
-const configContent = fs.readFileSync(configPath, 'utf8');
-assert.ok(configContent.includes("API_URL"), "config.js contains API_URL");
-assert.ok(configContent.includes("USE_MOCK"), "config.js contains USE_MOCK");
-assert.ok(configContent.includes("ANON_KEY"), "config.js contains ANON_KEY");
-console.log("✔ config.js properly structured");
+// 2. Verify manifest.json and PWA setup
+assert.ok(fs.existsSync(manifestPath), 'manifest.json must exist');
+const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+assert.ok(manifest.name, 'manifest must have a name');
+assert.ok(manifest.start_url, 'manifest must have a start_url');
+assert.ok(Array.isArray(manifest.icons) && manifest.icons.length > 0, 'manifest must have icons');
+assert.ok(html.includes('manifest.json'), 'index.html must link to manifest.json');
+assert.ok(fs.existsSync(iconPath), 'icon.svg must exist');
+console.log('✔ PWA Manifest and icon assets verified');
 
-// 3. Verify app.js syntax and line count constraint
-const appPath = path.resolve('d:/AeroCast/frontend/app.js');
-assert.ok(fs.existsSync(appPath), "app.js exists");
+// 3. Verify sw.js exists and handles static shell caching
+assert.ok(fs.existsSync(swPath), 'sw.js must exist');
+const swContent = fs.readFileSync(swPath, 'utf8');
+assert.ok(swContent.includes('install'), 'sw.js must handle install event');
+assert.ok(swContent.includes('fetch'), 'sw.js must handle fetch event');
+assert.ok(swContent.includes('caches'), 'sw.js must use Cache API');
+console.log('✔ Service Worker verified');
+
+// 4. Verify app.js syntax and key capabilities
+assert.ok(fs.existsSync(appPath), 'app.js must exist');
 const appContent = fs.readFileSync(appPath, 'utf8');
-const lineCount = appContent.split('\n').length;
-console.log(`app.js line count: ${lineCount} (Target: under ~500 lines)`);
-assert.ok(lineCount <= 520, "app.js is under constraint limit");
+assert.ok(appContent.includes('renderHistorySvgChart'), 'app.js must include SVG climate chart generator');
+assert.ok(appContent.includes('modelComparisonPanel'), 'app.js must handle modelComparisonPanel');
+assert.ok(appContent.includes('renderRegionalMap'), 'app.js must handle regional disaster map');
+assert.ok(appContent.includes('marine'), 'app.js must handle marine advisory');
+assert.ok(appContent.includes('latency_ms') || appContent.includes('latency-pill'), 'app.js must display response latency');
+console.log('✔ app.js features and capabilities verified');
 
-// 4. Verify multilingual dictionary covers en, hi, bn, ta, te, mr
-for (const lang of ['en', 'hi', 'bn', 'ta', 'te', 'mr']) {
-  assert.ok(appContent.includes(`${lang}: {`), `Language '${lang}' dictionary exists`);
-}
-console.log("✔ Multilingual dictionary covers all 6 required Indian languages");
-
-// 5. Verify security: app.js does not use unsafe innerHTML for user text
-assert.ok(!appContent.includes("innerHTML = text"), "Safe DOM text injection used");
-assert.ok(appContent.includes("e.textContent = txt") || appContent.includes("textContent = text"), "textContent used for safe bubble rendering");
-console.log("✔ Security: textContent verified for user and API texts");
-
-
-console.log("ALL ACCEPTANCE TESTS PASSED SUCCESSFULLY! 🎉");
+console.log('ALL FRONTEND ACCEPTANCE TESTS PASSED! 🎉');

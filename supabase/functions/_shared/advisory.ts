@@ -7,6 +7,7 @@ export const RULES = {
   spray: { maxWindKmh: 15, maxRainProb: 30, maxTempC: 35 },
   irrigation: { skipIfRain2dMm: 5, highEt0Mm: 5 },
   harvest: { maxRain2dMm: 2, maxRainProb: 40 },
+  marine: { maxWaveHeightM: 1.5, maxWindKmh: 25 },
 };
 
 // Returns flags plus short reasons. The LLM only explains these; it never decides.
@@ -15,10 +16,11 @@ export function advise(
   rows: DailyRow[],
   i: number,
   hours: HourRow[],
+  marine?: { is_coastal: boolean; wave_height_m?: number; wave_period_s?: number; swell_wave_height_m?: number } | null,
 ): Record<string, unknown> | null {
   const next = rows[i + 1];
-  const rain2d = round1((rows[i].rain_mm ?? 0) + (next?.rain_mm ?? 0));
-  const prob2d = Math.max(rows[i].rain_prob ?? 0, next?.rain_prob ?? 0);
+  const rain2d = round1((rows[i]?.rain_mm ?? 0) + (next?.rain_mm ?? 0));
+  const prob2d = Math.max(rows[i]?.rain_prob ?? 0, next?.rain_prob ?? 0);
 
   if (topic === "spray") {
     const R = RULES.spray;
@@ -42,7 +44,7 @@ export function advise(
 
   if (topic === "irrigation") {
     const R = RULES.irrigation;
-    const et0 = rows[i].et0_mm;
+    const et0 = rows[i]?.et0_mm;
     const irrigate = rain2d < R.skipIfRain2dMm;
     const reason = [irrigate ? "little rain expected in next 2 days" : "enough rain expected in next 2 days"];
     if (irrigate && et0 != null && et0 >= R.highEt0Mm) reason.push("high evaporation");
@@ -55,6 +57,26 @@ export function advise(
     if (rain2d >= R.maxRain2dMm) reason.push("rain expected");
     if (prob2d >= R.maxRainProb) reason.push("high rain chance");
     return { harvest_ok: reason.length === 0, reason, rain_next_2_days_mm: rain2d, max_rain_prob: prob2d };
+  }
+
+  if (topic === "marine") {
+    const R = RULES.marine;
+    if (!marine || !marine.is_coastal) {
+      return { marine_safe: null, reason: ["location is inland / non-coastal"] };
+    }
+    const waveHeight = marine.wave_height_m ?? 0;
+    const wind = rows[i]?.wind_max_kmh ?? 0;
+    const reason: string[] = [];
+    if (waveHeight >= R.maxWaveHeightM) reason.push(`wave height ${waveHeight}m (limit ${R.maxWaveHeightM}m)`);
+    if (wind >= R.maxWindKmh) reason.push(`wind ${wind} km/h (limit ${R.maxWindKmh} km/h)`);
+    return {
+      marine_safe: reason.length === 0,
+      reason: reason.length === 0 ? ["calm sea conditions suitable for small craft and fishing"] : reason,
+      wave_height_m: waveHeight,
+      wave_period_s: marine.wave_period_s ?? null,
+      swell_wave_height_m: marine.swell_wave_height_m ?? null,
+      max_wind_kmh: wind,
+    };
   }
 
   return null;

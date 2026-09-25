@@ -1,0 +1,20 @@
+{
+  "name": "AeroCast | AI Weather & Agro Advisory",
+  "short_name": "AeroCast",
+  "description": "Hyperlocal AI Weather, Marine Advisory & Farming Assistant for India",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1120",
+  "theme_color": "#0284c7",
+  "categories": ["weather", "agriculture", "utilities"],
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

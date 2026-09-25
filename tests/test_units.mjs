@@ -71,12 +71,13 @@ const RULES = {
   spray: { maxWindKmh: 15, maxRainProb: 30, maxTempC: 35 },
   irrigation: { skipIfRain2dMm: 5, highEt0Mm: 5 },
   harvest: { maxRain2dMm: 2, maxRainProb: 40 },
+  marine: { maxWaveHeightM: 1.5, maxWindKmh: 25 },
 };
 
-function advise(topic, rows, i, hours) {
+function advise(topic, rows, i, hours, marine) {
   const next = rows[i + 1];
-  const rain2d = Math.round(((rows[i].rain_mm ?? 0) + (next?.rain_mm ?? 0)) * 10) / 10;
-  const prob2d = Math.max(rows[i].rain_prob ?? 0, next?.rain_prob ?? 0);
+  const rain2d = Math.round(((rows[i]?.rain_mm ?? 0) + (next?.rain_mm ?? 0)) * 10) / 10;
+  const prob2d = Math.max(rows[i]?.rain_prob ?? 0, next?.rain_prob ?? 0);
 
   if (topic === "spray") {
     const R = RULES.spray;
@@ -100,7 +101,7 @@ function advise(topic, rows, i, hours) {
 
   if (topic === "irrigation") {
     const R = RULES.irrigation;
-    const et0 = rows[i].et0_mm;
+    const et0 = rows[i]?.et0_mm;
     const irrigate = rain2d < R.skipIfRain2dMm;
     const reason = [irrigate ? "little rain expected in next 2 days" : "enough rain expected in next 2 days"];
     if (irrigate && et0 != null && et0 >= R.highEt0Mm) reason.push("high evaporation");
@@ -113,6 +114,26 @@ function advise(topic, rows, i, hours) {
     if (rain2d >= R.maxRain2dMm) reason.push("rain expected");
     if (prob2d >= R.maxRainProb) reason.push("high rain chance");
     return { harvest_ok: reason.length === 0, reason, rain_next_2_days_mm: rain2d, max_rain_prob: prob2d };
+  }
+
+  if (topic === "marine") {
+    const R = RULES.marine;
+    if (!marine || !marine.is_coastal) {
+      return { marine_safe: null, reason: ["location is inland / non-coastal"] };
+    }
+    const waveHeight = marine.wave_height_m ?? 0;
+    const wind = rows[i]?.wind_max_kmh ?? 0;
+    const reason = [];
+    if (waveHeight >= R.maxWaveHeightM) reason.push(`wave height ${waveHeight}m (limit ${R.maxWaveHeightM}m)`);
+    if (wind >= R.maxWindKmh) reason.push(`wind ${wind} km/h (limit ${R.maxWindKmh} km/h)`);
+    return {
+      marine_safe: reason.length === 0,
+      reason: reason.length === 0 ? ["calm sea conditions suitable for small craft and fishing"] : reason,
+      wave_height_m: waveHeight,
+      wave_period_s: marine.wave_period_s ?? null,
+      swell_wave_height_m: marine.swell_wave_height_m ?? null,
+      max_wind_kmh: wind,
+    };
   }
 
   return null;
@@ -206,7 +227,23 @@ const hoursHighWind = [
 const sprayWindDecision = advise("spray", mockRows.map(r => ({ ...r, rain_mm: 0 })), 0, hoursHighWind);
 assert.strictEqual(sprayWindDecision.spray_safe, false);
 assert.ok(sprayWindDecision.reason.some(r => r.includes("wind")));
-console.log("✔ Advisory rules passed");
+
+// Marine tests
+const mockMarineCoastal = { is_coastal: true, wave_height_m: 0.9, wave_period_s: 6.2, swell_wave_height_m: 0.6 };
+const marineOk = advise("marine", [{ date: "2026-09-25", wind_max_kmh: 18 }], 0, [], mockMarineCoastal);
+assert.strictEqual(marineOk.marine_safe, true);
+
+const mockMarineRough = { is_coastal: true, wave_height_m: 2.2, wave_period_s: 8.0, swell_wave_height_m: 1.8 };
+const marineRough = advise("marine", [{ date: "2026-09-25", wind_max_kmh: 18 }], 0, [], mockMarineRough);
+assert.strictEqual(marineRough.marine_safe, false);
+assert.ok(marineRough.reason.some(r => r.includes("wave height")));
+
+const mockMarineInland = { is_coastal: false };
+const marineInland = advise("marine", [{ date: "2026-09-25", wind_max_kmh: 10 }], 0, [], mockMarineInland);
+assert.strictEqual(marineInland.marine_safe, null);
+assert.strictEqual(marineInland.reason[0], "location is inland / non-coastal");
+
+console.log("✔ Advisory rules (spray, irrigation, harvest, marine) passed");
 
 // Test 5: Alert thresholds
 const normalRow = { date: "2026-09-25", rain_mm: 10, temp_max: 32, gust_max_kmh: 30 };

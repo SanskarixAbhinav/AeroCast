@@ -2,7 +2,18 @@ import { corsHeaders, json } from "../_shared/utils.ts";
 import { db } from "../_shared/db.ts";
 import { narrate, parseIntent } from "../_shared/llm.ts";
 import { geocode } from "../_shared/location.ts";
-import { dailyRows, getForecast, getHistory, historyRows, hourlyWindow, round1 } from "../_shared/weather.ts";
+import {
+  dailyRows,
+  extractMarine,
+  extractModelComparison,
+  getForecast,
+  getHistory,
+  getMarine,
+  getModelComparison,
+  historyRows,
+  hourlyWindow,
+  round1,
+} from "../_shared/weather.ts";
 import { computeAlerts, cycloneAlerts } from "../_shared/alerts.ts";
 import type { Alert } from "../_shared/alerts.ts";
 import { advise } from "../_shared/advisory.ts";
@@ -32,7 +43,7 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
 
   if (intent.topic === "other") {
     return say(
-      "I can answer questions about weather, the 7-day forecast, past rainfall, weather advisories, and farming decisions like spraying, irrigation and harvesting. Ask me about a place.",
+      "I can answer questions about weather, the 7-day forecast, past rainfall, marine wave conditions, weather advisories, and farming decisions like spraying, irrigation and harvesting. Ask me about a place.",
     );
   }
   if (!intent.location) return say("Please tell me which city or town you mean.");
@@ -72,11 +83,17 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
         total_rain_mm: round1(rows.reduce((s, r) => s + r.rain_mm, 0)),
         avg_temp_max: round1(rows.reduce((s, r) => s + r.temp_max, 0) / rows.length),
         rainiest_day: { date: rainiest.date, rain_mm: rainiest.rain_mm },
+        daily: rows,
       };
       meta = { source: "Open-Meteo archive", fetched_at: h.fetchedAt, from_cache: h.fromCache, stale: h.stale };
       facts.stale = h.stale;
     } else {
-      const fc = await getForecast(place);
+      const [fc, mcRes, marineRes] = await Promise.all([
+        getForecast(place),
+        getModelComparison(place).catch(() => null),
+        intent.topic === "marine" ? getMarine(place).catch(() => null) : Promise.resolve(null),
+      ]);
+
       const rows = dailyRows(fc.data);
       const i = resolveIndex(intent.date, rows);
       if (i < 0) return say("I can give forecasts for today and the next 6 days only.");
@@ -84,7 +101,32 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
       facts.current = fc.data.current;
       facts.day = rows[i];
       if (intent.topic === "forecast") facts.daily = rows;
-      facts.flags = advise(intent.topic, rows, i, hourlyWindow(fc.data, rows[i].date));
+
+      // Marine Advisory handling
+      let marineData = null;
+      if (intent.topic === "marine") {
+        marineData = extractMarine(marineRes?.data, i);
+        facts.marine = marineData;
+        facts.flags = advise("marine", rows, i, [], marineData);
+        if (marineData.is_coastal && (marineData.wave_height_m ?? 0) >= 2.0) {
+          alerts.push({
+            type: "rough_sea",
+            level: (marineData.wave_height_m ?? 0) >= 3.0 ? "red" : "orange",
+            date: rows[i].date,
+            message: `Rough sea conditions (${marineData.wave_height_m}m waves). Small craft and fishermen advised to exercise extreme caution.`,
+            simulated: false,
+            official: false,
+          });
+        }
+      } else {
+        facts.flags = advise(intent.topic, rows, i, hourlyWindow(fc.data, rows[i].date));
+      }
+
+      // Multi-NWP Model Comparison (GFS vs ECMWF IFS)
+      if (mcRes?.data) {
+        const mc = extractModelComparison(mcRes.data, i);
+        if (mc) facts.model_comparison = mc;
+      }
 
       alerts.push(...computeAlerts(intent.topic === "forecast" ? rows : [rows[i]]));
       if (intent.topic === "cyclone" || demo === "cyclone") {
@@ -171,6 +213,9 @@ Deno.serve(async (req) => {
   }
 
   log.latency_ms = Date.now() - t0;
+  if (body?.meta) {
+    body.meta.latency_ms = log.latency_ms;
+  }
   try {
     await db.from("chat_logs").insert(log); // best effort
   } catch (_e) {

@@ -85,6 +85,100 @@ export function getHistory(p: Place, start: string, end: string): Promise<Fetche
   );
 }
 
+export function getMarine(p: Place): Promise<Fetched> {
+  const q = new URLSearchParams({
+    latitude: String(p.lat),
+    longitude: String(p.lon),
+    timezone: "auto",
+    current: "wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period",
+    daily: "wave_height_max,wave_direction_dominant,wave_period_max,swell_wave_height_max,swell_wave_direction_dominant",
+  });
+  return cached(
+    `marine:${p.lat.toFixed(2)},${p.lon.toFixed(2)}`,
+    FORECAST_TTL_MS,
+    `https://marine-api.open-meteo.com/v1/marine?${q}`,
+  );
+}
+
+export function getModelComparison(p: Place): Promise<Fetched> {
+  const q = new URLSearchParams({
+    latitude: String(p.lat),
+    longitude: String(p.lon),
+    timezone: "auto",
+    models: "gfs_seamless,ecmwf_ifs",
+    daily: "temperature_2m_max,precipitation_sum,precipitation_probability_max",
+  });
+  return cached(
+    `mc:${p.lat.toFixed(2)},${p.lon.toFixed(2)}`,
+    FORECAST_TTL_MS,
+    `https://api.open-meteo.com/v1/forecast?${q}`,
+  );
+}
+
+// deno-lint-ignore no-explicit-any
+export function extractMarine(marineData: any, i = 0) {
+  if (!marineData) return { is_coastal: false, message: "Marine data unavailable." };
+  const d = marineData.daily;
+  const c = marineData.current;
+  const waveHeight = c?.wave_height ?? d?.wave_height_max?.[i] ?? null;
+  if (waveHeight == null) {
+    return {
+      is_coastal: false,
+      message: "Location is inland / non-coastal. Marine wave and swell data is only available for coastal waters.",
+    };
+  }
+  return {
+    is_coastal: true,
+    wave_height_m: round1(waveHeight),
+    wave_period_s: round1(c?.wave_period ?? d?.wave_period_max?.[i] ?? 0),
+    wave_direction_deg: c?.wave_direction ?? d?.wave_direction_dominant?.[i] ?? null,
+    swell_wave_height_m: round1(c?.swell_wave_height ?? d?.swell_wave_height_max?.[i] ?? 0),
+    swell_wave_period_s: round1(c?.swell_wave_period ?? 0),
+    swell_wave_direction_deg: c?.swell_wave_direction ?? null,
+  };
+}
+
+// deno-lint-ignore no-explicit-any
+export function extractModelComparison(mcData: any, i = 0) {
+  if (!mcData?.daily) return null;
+  const d = mcData.daily;
+  const gfsTemp = d.temperature_2m_max_gfs_seamless?.[i];
+  const gfsRain = d.precipitation_sum_gfs_seamless?.[i];
+  const gfsProb = d.precipitation_probability_max_gfs_seamless?.[i];
+
+  const ecmwfTemp = d.temperature_2m_max_ecmwf_ifs?.[i];
+  const ecmwfRain = d.precipitation_sum_ecmwf_ifs?.[i];
+  const ecmwfProb = d.precipitation_probability_max_ecmwf_ifs?.[i];
+
+  if (gfsTemp == null && ecmwfTemp == null) return null;
+
+  const date = d.time?.[i] ?? "";
+  const tempDiff = (gfsTemp != null && ecmwfTemp != null) ? Math.abs(round1(gfsTemp - ecmwfTemp)) : null;
+  const probDiff = (gfsProb != null && ecmwfProb != null) ? Math.abs(gfsProb - ecmwfProb) : null;
+  const agree = (tempDiff !== null && tempDiff <= 2.5) && (probDiff === null || probDiff <= 25);
+
+  return {
+    date,
+    gfs: {
+      model_name: "NOAA GFS (Seamless)",
+      temp_max: gfsTemp != null ? round1(gfsTemp) : null,
+      rain_mm: gfsRain != null ? round1(gfsRain) : null,
+      rain_prob: gfsProb ?? null,
+    },
+    ecmwf: {
+      model_name: "ECMWF IFS",
+      temp_max: ecmwfTemp != null ? round1(ecmwfTemp) : null,
+      rain_mm: ecmwfRain != null ? round1(ecmwfRain) : null,
+      rain_prob: ecmwfProb ?? null,
+    },
+    agreement: agree
+      ? "High model consensus (GFS & ECMWF agree within 2.5°C / 25% rain prob)"
+      : "Moderate spread between models — monitor for forecast shifts",
+    agreement_bool: agree,
+    note: "Two independent forecast models, shown for transparency",
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 export function dailyRows(fc: any): DailyRow[] {
   const d = fc.daily;
