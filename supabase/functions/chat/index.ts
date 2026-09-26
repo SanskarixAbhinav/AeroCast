@@ -55,7 +55,6 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   if (!intent.location) return say("Please tell me which city or town you mean.");
 
   // 2. Resolve the location
-  const tGeo = Date.now();
   let place;
   t = Date.now();
   try {
