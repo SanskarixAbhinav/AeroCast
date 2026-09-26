@@ -18,5 +18,5 @@ window.CONFIG = {
   // the search history feature. Also sent as a bearer token to the Edge
   // Function above when JWT verification is enabled there.
   // Find it in Supabase Dashboard -> Project Settings -> API -> anon public key.
-  ANON_KEY: ""
+  ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNlZmJnZXdzaGd5ZWtra3djcXhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNjY0OTEsImV4cCI6MjEwNTg0MjQ5MX0.u5qK1xalB62bBr_-sVSVriJ4IzYJ8BTb4_Et3jo7Xkw"
 };

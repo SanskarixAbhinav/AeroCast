@@ -20,7 +20,7 @@ console.log('Validating TypeScript syntax for all Edge Function files...');
 
 let passed = true;
 for (const file of files) {
-  const fullPath = path.resolve('d:/AeroCast', file);
+  const fullPath = path.resolve(file);
   try {
     const code = fs.readFileSync(fullPath, 'utf8');
     stripTypeScriptTypes(code);
