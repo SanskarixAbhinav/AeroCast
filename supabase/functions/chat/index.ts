@@ -222,12 +222,13 @@ Deno.serve(async (req) => {
     body = await handleChat(q, input.lang, input.demo, log);
   } catch (e) {
     log.error = String(e).slice(0, 300);
+    log.stack = (e instanceof Error ? e.stack ?? "" : "").slice(0, 500);
     status = 500;
     body = {
       answer: "Something went wrong on our side. Please try again.",
       facts: null,
       alerts: [],
-      meta: { error: true },
+      meta: { error: true, detail: String(e).slice(0, 200) },
     };
   }
 
@@ -250,4 +251,5 @@ Deno.serve(async (req) => {
   background(db.from("chat_logs").insert(log));
   return json(body, status);
 });
+// deploy: 20260926204930
 

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="AeroCast / WeatherGPT - Multilingual AI Weather & Farming Assistant for India">
   <meta name="theme-color" content="#0284c7">
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>AeroCast | AI Weather & Agro Advisory</title>
   
@@ -14,7 +14,7 @@
   <link rel="apple-touch-icon" href="icon.svg">
 
   <!-- Leaflet Map CSS: cdnjs primary, unpkg fallback if cdnjs is blocked/unreachable -->
-  <link id="leafletCss" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin=""
+  <link id="leafletCss" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous"
     onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';" />
 
   <!-- Noto Sans Indic families: guarantees हिंदी/বাংলা/தமிழ்/తెలుగు/मराठी chips,
@@ -278,13 +278,13 @@
   <!-- Leaflet Map JS: cdnjs primary, unpkg fallback if cdnjs is blocked/unreachable.
        This never delays or blocks the weather chat pipeline - it only affects
        the optional map panel, and fails gracefully (see app.js ensureMap()). -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGUkgiQnQBuyGDxTy3dzlx9ROXFUueFKeIO++ETaRJIQXr+8gVC7KvpVVIhQ==" crossorigin=""
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-puJW3E/qXDqYp9IfhAI54BJEaWIfloJ7JWs7OeD5i6ruC9JZL1gERT1wjtwXFlh7CjE7ZJ+/vcRZRkIYIb6p4g==" crossorigin="anonymous"
     onload="window.dispatchEvent(new Event('leaflet:ready'));"
     onerror="
       this.onerror=null;
       var s=document.createElement('script');
       s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-      s.crossOrigin='';
+      s.crossOrigin='anonymous';
       s.onload=function(){ window.dispatchEvent(new Event('leaflet:ready')); };
       s.onerror=function(){ console.error('AeroCast: Leaflet failed to load from both cdnjs and unpkg.'); window.dispatchEvent(new Event('leaflet:unavailable')); };
       document.head.appendChild(s);
