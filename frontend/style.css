@@ -1041,6 +1041,20 @@ body {
   flex: 1;
 }
 
+.map-unavailable {
+  height: 100%;
+  min-height: 250px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-align: center;
+  background: var(--bg-surface-subtle);
+  padding: 1rem;
+}
+
 /* Architecture & Scope Header Button */
 .ctrl-btn-arch {
   background: var(--primary-subtle);
@@ -1587,6 +1601,64 @@ body {
 .btn-guest-auth:hover {
   border-color: var(--primary);
   color: var(--primary);
+}
+
+/* Google Sign-In Button */
+.btn-google-auth {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  width: 100%;
+  background: #ffffff;
+  color: #3c4043;
+  border: 1px solid #dadce0;
+  padding: 0.65rem 1rem;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  letter-spacing: 0.01em;
+}
+
+.btn-google-auth:hover:not(:disabled) {
+  box-shadow: 0 1px 6px rgba(60, 64, 67, 0.22), 0 2px 8px rgba(60, 64, 67, 0.12);
+  border-color: #c6c6c6;
+  transform: translateY(-1px);
+}
+
+.btn-google-auth:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+.btn-google-auth:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (prefers-color-scheme: dark) {
+  .btn-google-auth {
+    background: #303030;
+    color: #e8eaed;
+    border-color: #5f6368;
+  }
+  .btn-google-auth:hover:not(:disabled) {
+    background: #3c3c3c;
+    border-color: #8a8a8a;
+  }
+}
+
+/* User chip avatar (Google profile picture) */
+.user-chip-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.4);
 }
 
 .auth-guest-note {

@@ -23,6 +23,8 @@
   let regionalLayerGroup = null;
   let mapMode = 'single'; // 'single' | 'regional'
   let lastSingleCoords = { lat: 22.57, lon: 88.36, label: "Kolkata, West Bengal, India" };
+  let mapLoadFailed = false;      // true once Leaflet has failed to load from every CDN we tried
+  let pendingMapRender = null;    // { lat, lon, label } queued if a query answers before Leaflet is ready
 
   // --- 1. Multilingual Dictionaries ---
   const I18N = {
@@ -410,31 +412,54 @@
 
   function ensureMap() {
     if (!window.L) return null;
-    if (!mapInstance) {
+    if (mapInstance) return mapInstance;
+    try {
       mapInstance = window.L.map('weatherMap', { zoomControl: true, scrollWheelZoom: false }).setView([22.57, 88.36], 10);
       window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 18
       }).addTo(mapInstance);
       regionalLayerGroup = window.L.layerGroup().addTo(mapInstance);
+      return mapInstance;
+    } catch (e) {
+      // A Leaflet runtime error (e.g. bad container, plugin conflict) must
+      // never break the rest of the dashboard - degrade gracefully instead.
+      console.error('AeroCast: map initialization failed', e);
+      mapInstance = null;
+      return null;
     }
-    return mapInstance;
+  }
+
+  function showMapUnavailable() {
+    const wrapper = $('mapWrapper');
+    if (wrapper) wrapper.style.display = 'flex';
+    const mapEl = $('weatherMap');
+    if (mapEl) mapEl.innerHTML = '<div class="map-unavailable">🗺️ Map temporarily unavailable</div>';
   }
 
   function renderMap(lat, lon, label) {
-    if (!window.L || !lat || !lon) return;
+    if (!lat || !lon) return;
     lastSingleCoords = { lat, lon, label };
+
+    // If Leaflet hasn't loaded yet (or failed), queue this render. The
+    // 'leaflet:ready' event listener below will replay it once Leaflet is
+    // available. This never delays or blocks the chat response.
+    if (!window.L) {
+      pendingMapRender = { lat, lon, label };
+      if (mapLoadFailed) showMapUnavailable();
+      return;
+    }
 
     const mapWrapper = $('mapWrapper');
     if (!mapWrapper) return;
     mapWrapper.style.display = 'flex';
 
     // Use requestAnimationFrame to ensure the container is visible/sized
-    // before Leaflet tries to measure its dimensions
+    // before Leaflet tries to measure its dimensions.
     requestAnimationFrame(() => {
       try {
         const map = ensureMap();
-        if (!map) return;
+        if (!map) { showMapUnavailable(); return; }
 
         if (mapMode === 'single') {
           showSingleMapView(lat, lon, label);
@@ -442,14 +467,26 @@
           renderRegionalMap();
         }
       } catch (mapErr) {
-        console.error('[AeroCast] Map render error:', mapErr);
-        const mapContainer = $('weatherMap');
-        if (mapContainer) {
-          mapContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.85rem;color:#94a3b8;">📍 Map temporarily unavailable</div>';
-        }
+        console.error('AeroCast: map render failed', mapErr);
+        showMapUnavailable();
       }
     });
   }
+
+  // Fired by index.html once Leaflet finishes loading (from cdnjs or the
+  // unpkg fallback). Replays whatever query most recently tried to render
+  // a map while Leaflet wasn't ready yet.
+  window.addEventListener('leaflet:ready', () => {
+    if (pendingMapRender) {
+      const { lat, lon, label } = pendingMapRender;
+      pendingMapRender = null;
+      renderMap(lat, lon, label);
+    }
+  });
+  window.addEventListener('leaflet:unavailable', () => {
+    mapLoadFailed = true;
+    if (pendingMapRender) { pendingMapRender = null; showMapUnavailable(); }
+  });
 
   function showSingleMapView(lat, lon, label) {
     mapMode = 'single';

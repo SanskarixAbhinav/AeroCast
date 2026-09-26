@@ -1,5 +1,5 @@
 import { cacheGet, cacheSet } from "./db.ts";
-import { fetchJson } from "./utils.ts";
+import { background, fetchJson } from "./utils.ts";
 
 export interface Place {
   name: string;
@@ -34,7 +34,7 @@ export async function geocode(city: string): Promise<Place | null> {
       timezone: r.timezone,
       label: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
     };
-    await cacheSet(key, place);
+    background(cacheSet(key, place));
     return place;
   } catch (_e) {
     if (hit) return hit.value;

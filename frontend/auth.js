@@ -32,7 +32,8 @@
       historyTitle: "Your search history", today: "Today", yesterday: "Yesterday", earlier: "Earlier",
       empty: "No searches yet. Ask AeroCast a question and it will show up here.",
       clearAll: "Clear all", confirmClear: "Delete your entire search history?", close: "Close",
-      signedInAs: "Signed in" },
+      signedInAs: "Signed in",
+      googleSignIn: "Sign in with Google", orContinueWith: "or continue with" },
     hi: { signIn: "साइन इन", signOut: "साइन आउट", guest: "गेस्ट", history: "इतिहास",
       modalTitle: "AeroCast में साइन इन करें", tabEmail: "ईमेल", tabPhone: "फ़ोन",
       emailLabel: "ईमेल पता", emailPlaceholder: "you@example.com", sendLink: "मैजिक लिंक भेजें",
@@ -48,7 +49,8 @@
       historyTitle: "आपका खोज इतिहास", today: "आज", yesterday: "कल", earlier: "पहले",
       empty: "अभी तक कोई खोज नहीं। AeroCast से सवाल पूछें, वह यहाँ दिखेगा।",
       clearAll: "सभी हटाएं", confirmClear: "अपना पूरा खोज इतिहास हटाएं?", close: "बंद करें",
-      signedInAs: "साइन इन किया गया" },
+      signedInAs: "साइन इन किया गया",
+      googleSignIn: "Google से साइन इन करें", orContinueWith: "या जारी रखें" },
     bn: { signIn: "সাইন ইন", signOut: "সাইন আউট", guest: "গেস্ট", history: "ইতিহাস",
       modalTitle: "AeroCast-এ সাইন ইন করুন", tabEmail: "ইমেল", tabPhone: "ফোন",
       emailLabel: "ইমেল ঠিকানা", emailPlaceholder: "you@example.com", sendLink: "ম্যাজিক লিঙ্ক পাঠান",
@@ -64,7 +66,8 @@
       historyTitle: "আপনার অনুসন্ধান ইতিহাস", today: "আজ", yesterday: "গতকাল", earlier: "আগে",
       empty: "এখনো কোনো অনুসন্ধান নেই। AeroCast-কে প্রশ্ন করুন, এখানে দেখা যাবে।",
       clearAll: "সব মুছুন", confirmClear: "আপনার সম্পূর্ণ অনুসন্ধান ইতিহাস মুছবেন?", close: "বন্ধ করুন",
-      signedInAs: "সাইন ইন করা হয়েছে" },
+      signedInAs: "সাইন ইন করা হয়েছে",
+      googleSignIn: "Google দিয়ে সাইন ইন করুন", orContinueWith: "বা অব্যাহত রাখুন" },
     ta: { signIn: "உள்நுழை", signOut: "வெளியேறு", guest: "விருந்தினர்", history: "வரலாறு",
       modalTitle: "AeroCast-இல் உள்நுழையவும்", tabEmail: "மின்னஞ்சல்", tabPhone: "தொலைபேசி",
       emailLabel: "மின்னஞ்சல் முகவரி", emailPlaceholder: "you@example.com", sendLink: "மேஜிக் லிங்க் அனுப்பவும்",
@@ -80,7 +83,8 @@
       historyTitle: "உங்கள் தேடல் வரலாறு", today: "இன்று", yesterday: "நேற்று", earlier: "முன்பு",
       empty: "இதுவரை தேடல் இல்லை. AeroCast-இடம் ஒரு கேள்வி கேளுங்கள், இங்கே தெரியும்.",
       clearAll: "அனைத்தையும் அழி", confirmClear: "உங்கள் முழு தேடல் வரலாற்றையும் நீக்கவா?", close: "மூடு",
-      signedInAs: "உள்நுழைந்துள்ளீர்கள்" },
+      signedInAs: "உள்நுழைந்துள்ளீர்கள்",
+      googleSignIn: "Google மூலம் உள்நுழையவும்", orContinueWith: "அல்லது தொடரவும்" },
     te: { signIn: "సైన్ ఇన్", signOut: "సైన్ అవుట్", guest: "గెస్ట్", history: "చరిత్ర",
       modalTitle: "AeroCastలో సైన్ ఇన్ చేయండి", tabEmail: "ఇమెయిల్", tabPhone: "ఫోన్",
       emailLabel: "ఇమెయిల్ చిరునామా", emailPlaceholder: "you@example.com", sendLink: "మేజిక్ లింక్ పంపండి",
@@ -96,7 +100,8 @@
       historyTitle: "మీ శోధన చరిత్ర", today: "ఈరోజు", yesterday: "నిన్న", earlier: "ముందు",
       empty: "ఇంకా శోధనలు లేవు. AeroCastని ఒక ప్రశ్న అడగండి, ఇక్కడ కనిపిస్తుంది.",
       clearAll: "అన్నీ తొలగించు", confirmClear: "మీ మొత్తం శోధన చరిత్రను తొలగించాలా?", close: "మూసివేయి",
-      signedInAs: "సైన్ ఇన్ చేయబడింది" },
+      signedInAs: "సైన్ ఇన్ చేయబడింది",
+      googleSignIn: "Google తో సైన్ ఇన్ చేయండి", orContinueWith: "లేదా కొనసాగండి" },
     mr: { signIn: "साइन इन", signOut: "साइन आउट", guest: "गेस्ट", history: "इतिहास",
       modalTitle: "AeroCast मध्ये साइन इन करा", tabEmail: "ईमेल", tabPhone: "फोन",
       emailLabel: "ईमेल पत्ता", emailPlaceholder: "you@example.com", sendLink: "मॅजिक लिंक पाठवा",
@@ -112,7 +117,8 @@
       historyTitle: "तुमचा शोध इतिहास", today: "आज", yesterday: "काल", earlier: "आधी",
       empty: "अजून शोध नाही. AeroCast ला प्रश्न विचारा, तो इथे दिसेल.",
       clearAll: "सर्व हटवा", confirmClear: "तुमचा संपूर्ण शोध इतिहास हटवायचा का?", close: "बंद करा",
-      signedInAs: "साइन इन केले" }
+      signedInAs: "साइन इन केले",
+      googleSignIn: "Google ने साइन इन करा", orContinueWith: "किंवा सुरू ठेवा" }
   };
   const lang = () => (typeof localStorage !== 'undefined' && localStorage.getItem('weathergpt_lang')) || 'en';
   const t = () => T[lang()] || T.en;
@@ -169,13 +175,27 @@
           <button type="button" id="authModalClose" class="modal-close-btn" aria-label="${t().close}">&times;</button>
         </div>
         <div class="modal-body auth-modal-body">
-          <div class="auth-tabs" role="tablist">
-            <button type="button" class="auth-tab active" id="authTabEmail" role="tab">${t().tabEmail}</button>
-            <button type="button" class="auth-tab" id="authTabPhone" role="tab">${t().tabPhone}</button>
-          </div>
+
+          <!-- Google OAuth — shown first as the primary/fastest option -->
+          <button type="button" id="authGoogleBtn" class="btn-google-auth" ${!configured ? 'disabled' : ''}>
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            ${t().googleSignIn || 'Sign in with Google'}
+          </button>
 
           <div id="authNotConfiguredNotice" class="auth-notice" style="display:${configured ? 'none' : 'flex'}">
             ${t().notConfigured}
+          </div>
+
+          <div class="auth-divider"><span>${t().orContinueWith || 'or continue with'}</span></div>
+
+          <div class="auth-tabs" role="tablist">
+            <button type="button" class="auth-tab active" id="authTabEmail" role="tab">${t().tabEmail}</button>
+            <button type="button" class="auth-tab" id="authTabPhone" role="tab">${t().tabPhone}</button>
           </div>
 
           <form id="authEmailForm" class="auth-form">
@@ -209,6 +229,7 @@
     $('authModalClose').onclick = closeAuthModal;
     dlg.addEventListener('click', (e) => { if (e.target === dlg) closeAuthModal(); });
     $('authGuestBtn').onclick = closeAuthModal;
+    $('authGoogleBtn').onclick = onGoogleSignIn;
 
     $('authTabEmail').onclick = () => switchAuthTab('email');
     $('authTabPhone').onclick = () => switchAuthTab('phone');
@@ -245,6 +266,25 @@
     const dlg = $('authModal');
     if (!dlg) return;
     if (typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+  }
+
+  // --- Google OAuth ---
+  async function onGoogleSignIn() {
+    if (!configured) return setStatus(t().notConfigured, true);
+    const btn = $('authGoogleBtn');
+    const originalHTML = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.textContent = '\u2026'; }
+    try {
+      const { error } = await sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + window.location.pathname }
+      });
+      if (error) throw error;
+      // Browser redirects to Google — button stays disabled
+    } catch (_err) {
+      setStatus(t().genericError, true);
+      if (btn) { btn.disabled = false; btn.innerHTML = originalHTML; }
+    }
   }
 
   async function onEmailSubmit(e) {
@@ -307,11 +347,16 @@
     const userChip = $('userChip');
     if (!signInBtn || !userChip) return;
     if (session?.user) {
-      const label = session.user.email || session.user.phone || t().guest;
+      const user = session.user;
+      const label = user.user_metadata?.full_name || user.user_metadata?.name ||
+                    user.email || user.phone || t().guest;
+      const avatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
       signInBtn.style.display = 'none';
       historyBtn.style.display = 'inline-flex';
       userChip.style.display = 'flex';
-      userChip.innerHTML = `<span class="user-chip-dot"></span><span class="user-chip-label" title="${t().signedInAs}">${label}</span><button type="button" class="user-chip-signout" id="signOutBtn">${t().signOut}</button>`;
+      userChip.innerHTML = avatar
+        ? `<img class="user-chip-avatar" src="${avatar}" alt="" width="20" height="20" /><span class="user-chip-label" title="${t().signedInAs}: ${label}">${label}</span><button type="button" class="user-chip-signout" id="signOutBtn">${t().signOut}</button>`
+        : `<span class="user-chip-dot"></span><span class="user-chip-label" title="${t().signedInAs}">${label}</span><button type="button" class="user-chip-signout" id="signOutBtn">${t().signOut}</button>`;
       $('signOutBtn').onclick = async () => { if (sb) await sb.auth.signOut(); };
     } else {
       signInBtn.style.display = 'inline-flex';

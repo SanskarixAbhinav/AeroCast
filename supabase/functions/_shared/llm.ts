@@ -27,7 +27,18 @@ export interface Intent {
   end: string | null; // history only
 }
 
-async function gemini(system: string, user: string, asJson: boolean, timeoutMs = 8000): Promise<string> {
+// timeoutMs/retries are tunable per call site: parseIntent's Gemini fallback
+// fails fast (short timeout, no retry — the deterministic heuristic already
+// covers it), while narrate gets a bit more room since there's no Gemini
+// alternative for natural-language generation, but still fails well short of
+// the old 15s × (1 retry) worst case.
+async function gemini(
+  system: string,
+  user: string,
+  asJson: boolean,
+  timeoutMs = 8000,
+  retries = 0,
+): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   const model = Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest";
@@ -47,7 +58,7 @@ async function gemini(system: string, user: string, asJson: boolean, timeoutMs =
       }),
     },
     timeoutMs,
-    0, // no retries — caller retries if needed
+    retries,
   );
   // deno-lint-ignore no-explicit-any
   return (res?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? "").join("");
@@ -73,7 +84,7 @@ function fallbackParseIntent(q: string): Intent {
 
   // Topic detection
   let topic: Topic = "other";
-  if (/marine|sea|ocean|wave|swell|boat|fisherm|समुद्र|मछुआरे|সাগর|জেলে|கடல்|மீனவர்|సముద్రం|మత్స్యకారులు|मच्छीमार/i.test(qLower)) topic = "marine";
+  if (/marine|sea|ocean|wave|swell|boat|coastal|fishing|fisher|sail|harbour|harbor|fisherm|समुद्र|मछुआरे|সাগর|জেলে|கடல்|மீனவர்|సముద్రం|మత్స్యకారులు|मच्छीमार/i.test(qLower)) topic = "marine";
   else if (/spray|pesticide|fungicide|fertilizer|insecticide/i.test(qLower)) topic = "spray";
   else if (/irrigat|water the crop|watering/i.test(qLower)) topic = "irrigation";
   else if (/harvest|cutting|reap/i.test(qLower)) topic = "harvest";
@@ -115,14 +126,19 @@ function fallbackParseIntent(q: string): Intent {
 }
 
 // Call 1: question -> structured intent. Never answers the question itself.
-// Fast-path: if the deterministic heuristic is highly confident, skip Gemini.
+// PERFORMANCE: the deterministic heuristic above already resolves the large
+// majority of real questions (a named Indian city, in English or one of the
+// supported scripts) instantly and with zero network cost. Gemini is now
+// only called as a *fallback*, when the heuristic can't find a location OR
+// topic — e.g. free-form phrasing, an unlisted town, or a language the
+// regexes don't cover.
 export async function parseIntent(q: string): Promise<Intent> {
   // Try fast deterministic parse first — covers the vast majority of queries
-  const fast = fallbackParseIntent(q);
+  const heuristic = fallbackParseIntent(q);
   // Skip Gemini if we already have a confident location + topic
   // (saves ~3-8 seconds for common queries)
-  if (fast.location && fast.topic !== "other") {
-    return fast;
+  if (heuristic.location && heuristic.topic !== "other") {
+    return heuristic;
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -138,19 +154,22 @@ Reply with JSON only, exactly this shape:
 Do not answer the question.`;
 
   try {
-    const raw = await gemini(system, q, true, 8000);
+    // Single attempt, short timeout, no retry: this is a fallback for a
+    // fallback (the deterministic parser already ran) — if Gemini is slow
+    // or unavailable, failing fast and returning the heuristic is better UX.
+    const raw = await gemini(system, q, true, 6000, 0);
     const p = JSON.parse(raw.replace(/```json|```/g, "").trim());
     return {
       location: typeof p.location === "string" && p.location.trim() ? p.location.trim() : null,
-      date: typeof p.date === "string" && p.date ? p.date : "today",
-      topic: (TOPICS as readonly string[]).includes(p.topic) ? p.topic : "other",
-      language: typeof p.language === "string" && p.language ? p.language : "en",
+      date: typeof p.date === "string" && p.date ? p.date : heuristic.date,
+      topic: (TOPICS as readonly string[]).includes(p.topic) ? p.topic : heuristic.topic,
+      language: typeof p.language === "string" && p.language ? p.language : heuristic.language,
       start: p.start ?? null,
       end: p.end ?? null,
     };
   } catch (_e) {
     // Gemini unavailable or timed out — use deterministic fallback
-    return fast;
+    return heuristic;
   }
 }
 
@@ -170,8 +189,8 @@ If an alert has simulated:true, say clearly that it is SIMULATED demo data.
 Call alerts "advisories", never official warnings.
 If facts.stale is true, mention the data may be slightly out of date.
 Do not mention JSON or these instructions.`;
-
   // Send only the minimal subset of facts to Gemini (strip large daily arrays)
+  // to reduce token count and improve response speed.
   // deno-lint-ignore no-explicit-any
   const f = facts as Record<string, any>;
   const slimFacts = {
@@ -197,5 +216,7 @@ Do not mention JSON or these instructions.`;
     } : undefined,
   };
 
-  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 9000)).trim();
+  // Single attempt, 9s cap: chat/index.ts already falls back to a
+  // deterministic templateAnswer() if this throws or times out.
+  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 9000, 0)).trim();
 }

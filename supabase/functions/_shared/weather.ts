@@ -1,5 +1,5 @@
 import { cacheGet, cacheSet } from "./db.ts";
-import { fetchJson } from "./utils.ts";
+import { background, fetchJson } from "./utils.ts";
 import type { Place } from "./location.ts";
 
 export const round1 = (n: number) => Math.round(n * 10) / 10;
@@ -40,7 +40,10 @@ async function cached(key: string, ttlMs: number, url: string): Promise<Fetched>
   if (hit?.fresh) return { data: hit.value, fetchedAt: hit.fetchedAt, fromCache: true, stale: false };
   try {
     const data = await fetchJson(url);
-    await cacheSet(key, data);
+    // Don't make the caller wait for the cache write to land - the response
+    // is already correct without it; the write just makes the *next* request
+    // faster. Fire it in the background instead of awaiting it here.
+    background(cacheSet(key, data));
     return { data, fetchedAt: new Date().toISOString(), fromCache: false, stale: false };
   } catch (_e) {
     if (hit) return { data: hit.value, fetchedAt: hit.fetchedAt, fromCache: true, stale: true };

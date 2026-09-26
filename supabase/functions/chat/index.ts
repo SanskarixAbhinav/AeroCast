@@ -1,4 +1,4 @@
-import { corsHeaders, json } from "../_shared/utils.ts";
+import { background, corsHeaders, json } from "../_shared/utils.ts";
 import { db } from "../_shared/db.ts";
 import { narrate, parseIntent } from "../_shared/llm.ts";
 import { geocode } from "../_shared/location.ts";
@@ -26,11 +26,14 @@ const RATE_LIMIT_PER_MIN = 20;
 type Log = Record<string, any>;
 
 async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
-  const t0 = Date.now();
-  // 1. Parse the question into structured intent
-  // Fast-path: deterministic fallback is attempted first inside parseIntent
+  const timings: Record<string, number> = {};
+  const mark = (name: string, since: number) => { timings[name] = Date.now() - since; };
+
+  // 1. Parse the question into structured intent (heuristic first, Gemini only as fallback - see llm.ts)
+  let t = Date.now();
   const intent = await parseIntent(q);
-  log.intent_ms = Date.now() - t0;
+  mark("intent_ms", t);
+  log.intent_ms = timings.intent_ms;
   const lang = typeof langIn === "string" && langIn ? langIn : intent.language; // dropdown wins
   log.lang = lang;
   log.intent = intent;
@@ -54,12 +57,14 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   // 2. Resolve the location
   const tGeo = Date.now();
   let place;
+  t = Date.now();
   try {
     place = await geocode(intent.location);
   } catch (_e) {
     return say("Location service is temporarily unavailable. Please try again in a moment.");
   }
-  log.geo_ms = Date.now() - tGeo;
+  mark("geocode_ms", t);
+  log.geo_ms = timings.geocode_ms;
   log.location = place?.label ?? intent.location;
   if (!place) {
     return say(`I couldn't find a place called "${intent.location}". Please check the spelling or try a nearby city.`);
@@ -71,6 +76,7 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   const alerts: Alert[] = [];
   let meta: Record<string, unknown>;
 
+  t = Date.now();
   try {
     if (intent.topic === "history") {
       const range = clampHistory(intent.start, intent.end);
@@ -150,12 +156,14 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
     }
     throw e;
   }
+  mark("weather_ms", t);
   log.from_cache = meta.from_cache ?? null;
   facts.alerts = alerts;
 
   // 4. Narrate (LLM call 2), then verify no invented numbers slipped in
   const tNarrate = Date.now();
   let answer: string;
+  t = Date.now();
   try {
     answer = await narrate(facts, q, lang);
     log.narrate_ms = Date.now() - tNarrate;
@@ -168,6 +176,8 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
     log.note = `narrate failed: ${String(e).slice(0, 120)}`;
     answer = templateAnswer(facts);
   }
+  mark("narrate_ms", t);
+  log.timings = timings;
 
   // The UI draws its data card from `facts` (raw API values), never from `answer`.
   const { alerts: _dup, ...factsOut } = facts;
@@ -232,8 +242,13 @@ Deno.serve(async (req) => {
       narrate_ms: log.narrate_ms,
     };
   }
-  // Fire-and-forget: don't block the response waiting for DB write
-  db.from("chat_logs").insert(log).catch(() => {});
+  // Timing/profiling visibility in edge function logs.
+  console.log(`[chat] "${log.question ?? ""}" -> ${log.latency_ms}ms`, timings);
+
+  // Fire-and-forget: don't block the response waiting for DB write.
+  // background() uses EdgeRuntime.waitUntil on Deno Deploy so the write
+  // can complete after the response is sent.
+  background(db.from("chat_logs").insert(log));
   return json(body, status);
 });
 

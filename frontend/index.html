@@ -13,8 +13,9 @@
   <link rel="icon" type="image/svg+xml" href="icon.svg">
   <link rel="apple-touch-icon" href="icon.svg">
 
-  <!-- Leaflet Map CSS from cdnjs -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="" />
+  <!-- Leaflet Map CSS: cdnjs primary, unpkg fallback if cdnjs is blocked/unreachable -->
+  <link id="leafletCss" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin=""
+    onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';" />
   
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css">
@@ -267,8 +268,20 @@
     </div>
   </dialog>
 
-  <!-- Leaflet Map JS from cdnjs -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGUkgiQnQBuyGDxTy3dzlx9ROXFUueFKeIO++ETaRJIQXr+8gVC7KvpVVIhQ==" crossorigin=""></script>
+  <!-- Leaflet Map JS: cdnjs primary, unpkg fallback if cdnjs is blocked/unreachable.
+       This never delays or blocks the weather chat pipeline - it only affects
+       the optional map panel, and fails gracefully (see app.js ensureMap()). -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGUkgiQnQBuyGDxTy3dzlx9ROXFUueFKeIO++ETaRJIQXr+8gVC7KvpVVIhQ==" crossorigin=""
+    onload="window.dispatchEvent(new Event('leaflet:ready'));"
+    onerror="
+      this.onerror=null;
+      var s=document.createElement('script');
+      s.src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+      s.crossOrigin='';
+      s.onload=function(){ window.dispatchEvent(new Event('leaflet:ready')); };
+      s.onerror=function(){ console.error('AeroCast: Leaflet failed to load from both cdnjs and unpkg.'); window.dispatchEvent(new Event('leaflet:unavailable')); };
+      document.head.appendChild(s);
+    "></script>
 
   <!-- Supabase JS client (Auth: email magic link + phone OTP, and Search History) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
