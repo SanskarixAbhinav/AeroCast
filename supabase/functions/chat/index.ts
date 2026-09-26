@@ -73,7 +73,7 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   // deno-lint-ignore no-explicit-any
   const facts: Record<string, any> = { topic: intent.topic, location: place.label, lat: place.lat, lon: place.lon };
   const alerts: Alert[] = [];
-  let meta: Record<string, unknown>;
+  let meta: Record<string, unknown> = { source: "Open-Meteo" };
 
   t = Date.now();
   try {
@@ -161,7 +161,7 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
 
   // 4. Narrate (LLM call 2), then verify no invented numbers slipped in
   const tNarrate = Date.now();
-  let answer: string;
+  let answer: string = templateAnswer(facts);
   t = Date.now();
   try {
     answer = await narrate(facts, q, lang);
