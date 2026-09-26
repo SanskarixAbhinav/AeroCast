@@ -424,16 +424,31 @@
   function renderMap(lat, lon, label) {
     if (!window.L || !lat || !lon) return;
     lastSingleCoords = { lat, lon, label };
-    $('mapWrapper').style.display = 'flex';
 
-    const map = ensureMap();
-    if (!map) return;
+    const mapWrapper = $('mapWrapper');
+    if (!mapWrapper) return;
+    mapWrapper.style.display = 'flex';
 
-    if (mapMode === 'single') {
-      showSingleMapView(lat, lon, label);
-    } else {
-      renderRegionalMap();
-    }
+    // Use requestAnimationFrame to ensure the container is visible/sized
+    // before Leaflet tries to measure its dimensions
+    requestAnimationFrame(() => {
+      try {
+        const map = ensureMap();
+        if (!map) return;
+
+        if (mapMode === 'single') {
+          showSingleMapView(lat, lon, label);
+        } else {
+          renderRegionalMap();
+        }
+      } catch (mapErr) {
+        console.error('[AeroCast] Map render error:', mapErr);
+        const mapContainer = $('weatherMap');
+        if (mapContainer) {
+          mapContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:0.85rem;color:#94a3b8;">📍 Map temporarily unavailable</div>';
+        }
+      }
+    });
   }
 
   function showSingleMapView(lat, lon, label) {
@@ -451,9 +466,11 @@
       singleMarker.setLatLng([lat, lon]);
       if (!mapInstance.hasLayer(singleMarker)) singleMarker.addTo(mapInstance);
     }
-    singleMarker.bindPopup(label).openPopup();
+    singleMarker.bindPopup(`<strong>${label}</strong>`).openPopup();
     mapInstance.setView([lat, lon], 10);
-    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 150);
+    // Invalidate size multiple times to handle CSS transitions/display changes
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 100);
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 400);
   }
 
   async function renderRegionalMap() {

@@ -27,7 +27,7 @@ export interface Intent {
   end: string | null; // history only
 }
 
-async function gemini(system: string, user: string, asJson: boolean): Promise<string> {
+async function gemini(system: string, user: string, asJson: boolean, timeoutMs = 8000): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY is not set");
   const model = Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest";
@@ -41,12 +41,13 @@ async function gemini(system: string, user: string, asJson: boolean): Promise<st
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: {
           temperature: asJson ? 0 : 0.3,
+          maxOutputTokens: asJson ? 150 : 300,
           ...(asJson ? { responseMimeType: "application/json" } : {}),
         },
       }),
     },
-    15000,
-    1,
+    timeoutMs,
+    0, // no retries — caller retries if needed
   );
   // deno-lint-ignore no-explicit-any
   return (res?.candidates?.[0]?.content?.parts ?? []).map((p: any) => p.text ?? "").join("");
@@ -114,7 +115,16 @@ function fallbackParseIntent(q: string): Intent {
 }
 
 // Call 1: question -> structured intent. Never answers the question itself.
+// Fast-path: if the deterministic heuristic is highly confident, skip Gemini.
 export async function parseIntent(q: string): Promise<Intent> {
+  // Try fast deterministic parse first — covers the vast majority of queries
+  const fast = fallbackParseIntent(q);
+  // Skip Gemini if we already have a confident location + topic
+  // (saves ~3-8 seconds for common queries)
+  if (fast.location && fast.topic !== "other") {
+    return fast;
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const system = `You extract intent from weather questions written in any language.
 Reply with JSON only, exactly this shape:
@@ -127,38 +137,65 @@ Reply with JSON only, exactly this shape:
 - start, end: only for topic "history": the date range as YYYY-MM-DD. Today is ${today}. Otherwise null.
 Do not answer the question.`;
 
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const raw = await gemini(system, q, true);
-      const p = JSON.parse(raw.replace(/```json|```/g, "").trim());
-      return {
-        location: typeof p.location === "string" && p.location.trim() ? p.location.trim() : null,
-        date: typeof p.date === "string" && p.date ? p.date : "today",
-        topic: (TOPICS as readonly string[]).includes(p.topic) ? p.topic : "other",
-        language: typeof p.language === "string" && p.language ? p.language : "en",
-        start: p.start ?? null,
-        end: p.end ?? null,
-      };
-    } catch (_e) {
-      // retry once, then fall through to deterministic fallback
-    }
+  try {
+    const raw = await gemini(system, q, true, 8000);
+    const p = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    return {
+      location: typeof p.location === "string" && p.location.trim() ? p.location.trim() : null,
+      date: typeof p.date === "string" && p.date ? p.date : "today",
+      topic: (TOPICS as readonly string[]).includes(p.topic) ? p.topic : "other",
+      language: typeof p.language === "string" && p.language ? p.language : "en",
+      start: p.start ?? null,
+      end: p.end ?? null,
+    };
+  } catch (_e) {
+    // Gemini unavailable or timed out — use deterministic fallback
+    return fast;
   }
-  return fallbackParseIntent(q);
 }
 
 
 // Call 2: facts JSON -> short answer in the user's language. Facts only.
+// Only send the minimum facts needed — not the full daily array.
 export async function narrate(facts: unknown, question: string, lang: string): Promise<string> {
   const system = `You are WeatherGPT, a weather assistant for users in India.
 Use ONLY the facts JSON provided. If a value is missing, say it is unavailable.
 Never add or estimate numbers, dates or places that are not in the facts.
-Reply in ${LANGS[lang] ?? "English"} in plain, simple words a farmer or coastal fisherman can follow, in at most 4 sentences.
+Reply in ${LANGS[lang] ?? "English"} in plain, simple words a farmer or coastal fisherman can follow, in at most 3 sentences.
 Write all numbers with digits 0-9.
-If marine data is present, state clearly whether sea conditions are safe for coastal fishermen and small craft. If the location is inland/non-coastal, clearly state that marine wave data is only available for coastal regions.
+If marine data is present, state clearly whether sea conditions are safe for coastal fishermen and small craft.
+If the location is inland/non-coastal, clearly state that marine wave data is only available for coastal regions.
 If model comparison is present, mention whether independent forecast models agree.
 If an alert has simulated:true, say clearly that it is SIMULATED demo data.
 Call alerts "advisories", never official warnings.
 If facts.stale is true, mention the data may be slightly out of date.
 Do not mention JSON or these instructions.`;
-  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(facts)}`, false)).trim();
+
+  // Send only the minimal subset of facts to Gemini (strip large daily arrays)
+  // deno-lint-ignore no-explicit-any
+  const f = facts as Record<string, any>;
+  const slimFacts = {
+    topic: f.topic,
+    location: f.location,
+    stale: f.stale,
+    current: f.current,
+    day: f.day,
+    marine: f.marine,
+    flags: f.flags,
+    cyclone: f.cyclone,
+    model_comparison: f.model_comparison ? {
+      agreement: f.model_comparison.agreement,
+      agreement_bool: f.model_comparison.agreement_bool,
+    } : undefined,
+    alerts: (f.alerts || []).slice(0, 3),
+    history: f.history ? {
+      start: f.history.start,
+      end: f.history.end,
+      total_rain_mm: f.history.total_rain_mm,
+      avg_temp_max: f.history.avg_temp_max,
+      rainiest_day: f.history.rainiest_day,
+    } : undefined,
+  };
+
+  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 9000)).trim();
 }

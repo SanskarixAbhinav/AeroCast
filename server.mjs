@@ -50,6 +50,15 @@ function parseJsonBody(req) {
   });
 }
 
+// ---- In-memory caches (avoids repeated API calls for same location) ----
+const GEO_CACHE = new Map();   // city -> { lat, lon, name, label, ts }
+const WX_CACHE  = new Map();   // `${lat.toFixed(2)},${lon.toFixed(2)}` -> { data, ts }
+const GEO_TTL   = 60 * 60 * 1000;   // 1 hour
+const WX_TTL    = 5  * 60 * 1000;   // 5 minutes
+
+function geoKey(name) { return name.toLowerCase().trim(); }
+function wxKey(lat, lon) { return `${lat.toFixed(2)},${lon.toFixed(2)}`; }
+
 // Live Open-Meteo Weather API integration for local testing
 async function handleLocalChat(payload) {
   const t0 = Date.now();
@@ -90,24 +99,32 @@ async function handleLocalChat(payload) {
     };
   }
 
-  // 2. Geocode with Open-Meteo
+  // 2. Geocode with Open-Meteo (with in-memory cache)
   let lat = 22.57, lon = 88.36, label = "Kolkata, West Bengal, India", name = "Kolkata";
   if (placeName) {
-    try {
-      const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(placeName)}&count=1&language=en&format=json`;
-      const gRes = await fetch(geoUrl);
-      if (gRes.ok) {
-        const gData = await gRes.json();
-        if (gData.results && gData.results.length > 0) {
-          const r = gData.results[0];
-          lat = r.latitude;
-          lon = r.longitude;
-          name = r.name;
-          label = [r.name, r.admin1, r.country].filter(Boolean).join(", ");
+    const ck = geoKey(placeName);
+    const cached = GEO_CACHE.get(ck);
+    if (cached && Date.now() - cached.ts < GEO_TTL) {
+      ({ lat, lon, name, label } = cached);
+    } else {
+      try {
+        const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(placeName)}&count=1&language=en&format=json`;
+        const gRes = await fetch(geoUrl, { signal: AbortSignal.timeout(4000) });
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          if (gData.results && gData.results.length > 0) {
+            const r = gData.results[0];
+            lat = r.latitude;
+            lon = r.longitude;
+            name = r.name;
+            label = [r.name, r.admin1, r.country].filter(Boolean).join(", ");
+            GEO_CACHE.set(ck, { lat, lon, name, label, ts: Date.now() });
+          }
         }
+      } catch (_err) {
+        // fallback to defaults if offline or timed out
+        if (cached) ({ lat, lon, name, label } = cached); // use stale if available
       }
-    } catch (_err) {
-      // fallback to defaults if offline
     }
   }
 
@@ -212,29 +229,52 @@ async function handleLocalChat(payload) {
   let aqData = null;
   let flData = null;
 
+  const tFetch = Date.now();
+
+  // Check weather cache first
+  const wk = wxKey(lat, lon);
+  const wxCached = WX_CACHE.get(wk);
+  let wxFromCache = false;
+  if (wxCached && Date.now() - wxCached.ts < WX_TTL) {
+    forecastData = wxCached.forecastData;
+    mcData = wxCached.mcData;
+    wxFromCache = true;
+  }
+
   try {
-    const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,et0_fao_evapotranspiration,uv_index_max&timezone=auto`;
-    const mcUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&models=gfs_seamless,ecmwf_ifs&daily=temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`;
-    const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height&daily=wave_height_max,wave_direction_dominant,wave_period_max,swell_wave_height_max&timezone=auto`;
+    const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,et0_fao_evapotranspiration,uv_index_max&timezone=auto&forecast_days=7`;
+    const mcUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&models=gfs_seamless,ecmwf_ifs&daily=temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto&forecast_days=3`;
+    const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height&daily=wave_height_max,wave_period_max,swell_wave_height_max&timezone=auto&forecast_days=3`;
     const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,us_aqi&timezone=auto`;
     const flUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=7`;
 
+    const TO = 4000; // 4s per API call
     const [fRes, mcRes, mRes, aqRes, flRes] = await Promise.all([
-      fetch(fUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
-      fetch(mcUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
-      isMarine ? fetch(mUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null) : Promise.resolve(null),
-      fetch(aqUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
-      (isFlood || demo === 'cyclone') ? fetch(flUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null) : Promise.resolve(null)
+      wxFromCache ? Promise.resolve(null) : fetch(fUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null),
+      wxFromCache ? Promise.resolve(null) : fetch(mcUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null),
+      isMarine ? fetch(mUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null),
+      isAirQuality ? fetch(aqUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null),
+      (isFlood || demo === 'cyclone') ? fetch(flUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null)
     ]);
 
-    if (fRes && fRes.ok) forecastData = await fRes.json().catch(() => null);
-    if (mcRes && mcRes.ok) mcData = await mcRes.json().catch(() => null);
+    if (fRes && fRes.ok) {
+      forecastData = await fRes.json().catch(() => null);
+      if (forecastData) WX_CACHE.set(wk, { forecastData, mcData, ts: Date.now() });
+    }
+    if (mcRes && mcRes.ok) {
+      mcData = await mcRes.json().catch(() => null);
+      // Update cache entry with mc data
+      const existing = WX_CACHE.get(wk);
+      if (existing) existing.mcData = mcData;
+    }
     if (mRes && mRes.ok) marineData = await mRes.json().catch(() => null);
     if (aqRes && aqRes.ok) aqData = await aqRes.json().catch(() => null);
     if (flRes && flRes.ok) flData = await flRes.json().catch(() => null);
   } catch (_e) {
     // handled below
   }
+
+  console.log(`[AeroCast] ${name}: geo=${wxFromCache ? 'cached' : 'fresh'} fetch=${Date.now() - tFetch}ms total=${Date.now() - t0}ms`);
 
   // Parse Air Quality
   let airQuality = null;

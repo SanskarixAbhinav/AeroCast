@@ -26,8 +26,11 @@ const RATE_LIMIT_PER_MIN = 20;
 type Log = Record<string, any>;
 
 async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
-  // 1. Parse the question into structured intent (LLM call 1)
+  const t0 = Date.now();
+  // 1. Parse the question into structured intent
+  // Fast-path: deterministic fallback is attempted first inside parseIntent
   const intent = await parseIntent(q);
+  log.intent_ms = Date.now() - t0;
   const lang = typeof langIn === "string" && langIn ? langIn : intent.language; // dropdown wins
   log.lang = lang;
   log.intent = intent;
@@ -49,12 +52,14 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   if (!intent.location) return say("Please tell me which city or town you mean.");
 
   // 2. Resolve the location
+  const tGeo = Date.now();
   let place;
   try {
     place = await geocode(intent.location);
   } catch (_e) {
     return say("Location service is temporarily unavailable. Please try again in a moment.");
   }
+  log.geo_ms = Date.now() - tGeo;
   log.location = place?.label ?? intent.location;
   if (!place) {
     return say(`I couldn't find a place called "${intent.location}". Please check the spelling or try a nearby city.`);
@@ -88,11 +93,13 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
       meta = { source: "Open-Meteo archive", fetched_at: h.fetchedAt, from_cache: h.fromCache, stale: h.stale };
       facts.stale = h.stale;
     } else {
+      const tFetch = Date.now();
       const [fc, mcRes, marineRes] = await Promise.all([
         getForecast(place),
         getModelComparison(place).catch(() => null),
         intent.topic === "marine" ? getMarine(place).catch(() => null) : Promise.resolve(null),
       ]);
+      log.fetch_ms = Date.now() - tFetch;
 
       const rows = dailyRows(fc.data);
       const i = resolveIndex(intent.date, rows);
@@ -147,14 +154,17 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   facts.alerts = alerts;
 
   // 4. Narrate (LLM call 2), then verify no invented numbers slipped in
+  const tNarrate = Date.now();
   let answer: string;
   try {
     answer = await narrate(facts, q, lang);
+    log.narrate_ms = Date.now() - tNarrate;
     if (!numbersOk(answer, facts)) {
       log.note = "guard: number mismatch, used template";
       answer = templateAnswer(facts);
     }
   } catch (e) {
+    log.narrate_ms = Date.now() - tNarrate;
     log.note = `narrate failed: ${String(e).slice(0, 120)}`;
     answer = templateAnswer(facts);
   }
@@ -215,12 +225,15 @@ Deno.serve(async (req) => {
   log.latency_ms = Date.now() - t0;
   if (body?.meta) {
     body.meta.latency_ms = log.latency_ms;
+    body.meta.timing = {
+      intent_ms: log.intent_ms,
+      geo_ms: log.geo_ms,
+      fetch_ms: log.fetch_ms,
+      narrate_ms: log.narrate_ms,
+    };
   }
-  try {
-    await db.from("chat_logs").insert(log); // best effort
-  } catch (_e) {
-    // best effort logging
-  }
+  // Fire-and-forget: don't block the response waiting for DB write
+  db.from("chat_logs").insert(log).catch(() => {});
   return json(body, status);
 });
 

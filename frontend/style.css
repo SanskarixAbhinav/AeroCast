@@ -285,7 +285,7 @@ body {
 @media (min-width: 900px) {
   .main-content {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 400px);
+    grid-template-columns: minmax(0, 1fr) minmax(340px, 440px);
     overflow: hidden;
     height: 100%;
   }
@@ -958,7 +958,7 @@ body {
   box-shadow: var(--shadow-sm);
   display: flex;
   flex-direction: column;
-  min-height: 240px;
+  min-height: 260px;
   width: 100%;
 }
 
@@ -1035,9 +1035,10 @@ body {
 }
 
 .weather-map {
-  height: 250px;
-  min-height: 250px;
+  height: 320px;
+  min-height: 320px;
   width: 100%;
+  flex: 1;
 }
 
 /* Architecture & Scope Header Button */
