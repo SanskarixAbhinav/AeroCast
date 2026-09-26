@@ -33,7 +33,7 @@
       </div>
 
       <!-- Controls -->
-      <div class="header-actions">
+      <div class="header-actions" id="headerActions">
         <!-- Architecture & Scope Transparency Button -->
         <button type="button" id="archBtn" class="ctrl-btn-arch" title="View System Architecture & Scope Roadmap" aria-haspopup="dialog">
           <span aria-hidden="true">ℹ️</span> Scope & Roadmap
@@ -270,8 +270,12 @@
   <!-- Leaflet Map JS from cdnjs -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js" integrity="sha512-BwHfrr4c9kmRkLw6iXFdzcdWV/PGUkgiQnQBuyGDxTy3dzlx9ROXFUueFKeIO++ETaRJIQXr+8gVC7KvpVVIhQ==" crossorigin=""></script>
 
+  <!-- Supabase JS client (Auth: email magic link + phone OTP, and Search History) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
   <!-- Runtime Config & App Logic -->
   <script src="config.js"></script>
+  <script src="auth.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

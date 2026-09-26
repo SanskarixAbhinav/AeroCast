@@ -77,7 +77,80 @@ The frontend is pure static HTML/CSS/JS with **no build step, no npm dependencie
 | :--- | :--- | :--- |
 | `API_URL` | Base URL of your Supabase Edge Function chat endpoint | `"https://cefbgewshgyekkkwcqxb.supabase.co/functions/v1/chat"` |
 | `USE_MOCK` | Toggle built-in canned responses (`true`) vs live Supabase backend (`false`) | `false` |
-| `ANON_KEY` | Optional: Supabase Anon Key (if JWT verification is enabled) | `""` |
+| `SUPABASE_URL` | Supabase Project URL for client-side Auth & user preferences | `"https://cefbgewshgyekkkwcqxb.supabase.co"` |
+| `ANON_KEY` | Public Supabase Anon Key for client-side Auth | `"eyJ..."` |
+
+---
+
+## Authentication & User Preferences
+
+AeroCast features seamless Supabase client-side authentication supporting both Email Magic Links and Phone OTP, with a **zero-friction guest mode guarantee**.
+
+### 1. Email Authentication (Magic Link)
+- **Status:** **Works out of the box** by default on any Supabase project.
+- **Workflow:** User enters email → clicks "Send Magic Link" → Supabase automatically sends an email with an authentication link → clicking the link logs the user into AeroCast without passwords.
+- No third-party SMTP server is required for development/testing; Supabase's built-in mailer handles delivery.
+
+### 2. Phone Authentication (SMS OTP)
+- **Status:** **Requires SMS Provider Configuration.**
+- **Prerequisite:** Phone OTP requires an active SMS provider (Twilio, MSG91, Vonage, MessageBird, or AWS SNS) configured in your Supabase project:
+  1. Open [Supabase Dashboard](https://supabase.com/dashboard).
+  2. Navigate to **Authentication** → **Providers** → **Phone**.
+  3. Toggle **Enable Phone Provider**.
+  4. Select your SMS provider (e.g., Twilio or MSG91) and enter your Account SID, Auth Token, and Sender ID / Twilio Phone Number.
+  5. Click **Save**.
+- **Workflow:** User inputs their phone number (defaulting to India `+91`) → receives a 6-digit OTP code → enters code to authenticate.
+- *Note:* If an SMS provider is not configured, requesting phone OTP will display a clear error message guiding the administrator to enable an SMS gateway.
+
+### 3. Guest Mode Guarantee
+- **Authentication is completely optional.** AeroCast is 100% usable and demoable without logging in.
+- Guest users enjoy full access to the weather chat pipeline, live Open-Meteo forecasts, marine wave safety, farm advisories, NWP model comparison, flood warnings, cyclone simulation, and offline PWA installation.
+- Logging in unlocks three convenience features:
+  1. **Search History Drawer:** View past questions grouped by Today / Yesterday / Earlier date, re-ask with one tap, or delete individual records.
+  2. **Persisted Language Preference:** Automatically saved and pre-selected across sessions.
+  3. **Recent Locations Quick-Tap Bar:** Automatically remembers the user's last 5 queried locations with one-tap chips.
+
+---
+
+## Applying Database Migrations
+
+AeroCast database migrations are versioned under `supabase/migrations/`:
+1. `20260925000000_init.sql`: Creates `api_cache`, `cyclone_bulletins`, `chat_logs`, and seeds simulated cyclone data.
+2. `20260925000100_user_prefs.sql`: Creates `user_prefs` for authenticated user preferences and recent locations.
+3. `20260925000200_search_history.sql`: Creates `search_history` with user-isolated Row Level Security (RLS).
+
+### How to Apply Migrations:
+
+#### Option A: Via Supabase CLI (Recommended)
+```powershell
+# Push all pending migrations to your linked Supabase database
+npx supabase db push
+```
+
+#### Option B: Via Supabase Dashboard (SQL Editor)
+1. Open the [Supabase Dashboard](https://supabase.com/dashboard).
+2. Go to **SQL Editor** → **New Query**.
+3. Copy and paste the contents of `supabase/migrations/20260925000100_user_prefs.sql` and `supabase/migrations/20260925000200_search_history.sql`.
+4. Click **Run**.
+
+### Row Level Security (RLS) Architecture:
+The `user_prefs` and `search_history` tables have strict RLS enabled:
+- `user_prefs`: Users can only read and write their own preference row (`auth.uid() = user_id`).
+- `search_history`: Users can only `SELECT`, `INSERT`, and `DELETE` their own search log (`auth.uid() = user_id`).
+- Written directly from the client using the user's authenticated Supabase session (`supabase.from('search_history').insert(...)`). No custom backend service-role endpoint required.
+
+---
+
+## Real Datasets (Open-Meteo Free APIs)
+
+AeroCast integrates multiple real Open-Meteo APIs (all free, no API keys required):
+
+1. **Weather Forecast API:** Real-time conditions and 7-day outlook including hourly precipitation, wind gusts, relative humidity, and FAO-56 Reference Evapotranspiration ($ET_0$).
+2. **Air Quality API:** Real-time PM2.5, PM10, and US AQI indices for current and forecast locations with color-coded UI badges (Good, Moderate, Poor, Unhealthy, Severe).
+3. **Flood / River Discharge API:** Daily river discharge telemetry ($m^3/s$) evaluating catchment flood risk and triggering flood warnings.
+4. **Marine Wave API:** Coastal wave height, wave period, wave direction, and swell height with deterministic safety thresholds for artisanal fishing vessels.
+5. **Historical Archive API:** ERA5 reanalysis data back to 1940 rendered via interactive inline SVG charts.
+6. **Multi-NWP Model Comparison:** Contrasting NOAA GFS Seamless vs ECMWF IFS for transparent multi-model consensus.
 
 ---
 

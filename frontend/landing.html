@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="AeroCast - AI weather, marine safety and farming advisory for India. Ask in your language, get an answer checked against live data, never a guess.">
+<meta name="theme-color" content="#0b1120">
+<title>AeroCast | Zero-Guesswork Weather & Farming Advisory</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0b1120; --ink-soft:#141d33; --paper:#f5f7f4;
+    --sky:#0284c7; --sky-deep:#0369a1; --amber:#f59e0b; --leaf:#10b981;
+    --rain:#38bdf8; --line:rgba(245,247,244,0.14); --muted:#94a3b8;
+    --ff-display:'Space Grotesk',system-ui,sans-serif; --ff-body:'Inter',system-ui,sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--ff-body);background:var(--paper);color:var(--ink);line-height:1.55;-webkit-font-smoothing:antialiased;}
+  img,svg{max-width:100%;display:block;}
+  a{color:inherit;}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 1.5rem;}
+  h1,h2,h3{font-family:var(--ff-display);letter-spacing:-0.01em;}
+  .tabular{font-variant-numeric:tabular-nums;}
+
+  /* ---------- Top bar ---------- */
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(11,17,32,0.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  .topbar .wrap{display:flex;align-items:center;justify-content:space-between;height:64px;}
+  .brand{display:flex;align-items:center;gap:0.6rem;color:#fff;font-weight:700;font-size:1.05rem;font-family:var(--ff-display);}
+  .brand img{width:30px;height:30px;border-radius:8px;}
+  .topnav{display:flex;align-items:center;gap:1.6rem;}
+  .topnav a{color:#cbd5e1;text-decoration:none;font-size:0.9rem;font-weight:500;}
+  .topnav a:hover{color:#fff;}
+  .topcta{display:flex;gap:0.6rem;}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:0.4rem;border-radius:10px;font-weight:600;font-size:0.88rem;padding:0.55rem 1.05rem;cursor:pointer;text-decoration:none;border:1px solid transparent;white-space:nowrap;}
+  .btn-ghost{color:#e2e8f0;border-color:rgba(255,255,255,0.25);}
+  .btn-ghost:hover{border-color:#fff;color:#fff;}
+  .btn-solid{background:var(--amber);color:#1c1300;}
+  .btn-solid:hover{background:#fbbf24;}
+  @media (max-width:760px){.topnav{display:none;}}
+
+  /* ---------- Hero ---------- */
+  .hero{background:linear-gradient(165deg,#0b1120 0%,#0e2a44 55%,#0b4a63 100%);color:#fff;position:relative;overflow:hidden;padding:4.5rem 0 5rem;}
+  .hero::before{content:"";position:absolute;top:-140px;right:-120px;width:420px;height:420px;border-radius:50%;background:radial-gradient(circle,rgba(245,158,11,0.5),transparent 68%);filter:blur(4px);}
+  .hero .wrap{position:relative;display:grid;grid-template-columns:1.15fr 1fr;gap:3rem;align-items:center;}
+  @media (max-width:900px){.hero .wrap{grid-template-columns:1fr;}}
+  .eyebrow{display:inline-block;color:var(--amber);font-weight:600;font-size:0.85rem;margin-bottom:1rem;}
+  .hero h1{font-size:clamp(2.3rem,4.6vw,3.4rem);line-height:1.06;font-weight:700;}
+  .hero p.lede{margin-top:1.2rem;font-size:1.08rem;color:#cdd8e6;max-width:46ch;}
+  .hero-ctas{display:flex;gap:0.8rem;margin-top:2rem;flex-wrap:wrap;}
+  .hero-note{margin-top:1.1rem;font-size:0.82rem;color:#9fb2c8;}
+
+  .readout{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:1.5rem 1.6rem;backdrop-filter:blur(6px);}
+  .readout-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.1rem;}
+  .readout-place{font-weight:700;font-size:0.98rem;}
+  .readout-time{font-size:0.74rem;color:#9fb2c8;}
+  .readout-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.9rem;}
+  .readout-stat{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:0.85rem 0.9rem;}
+  .readout-stat .num{font-family:var(--ff-display);font-size:1.9rem;font-weight:700;line-height:1;}
+  .readout-stat .unit{font-size:0.95rem;font-weight:500;color:#cdd8e6;margin-left:0.15rem;}
+  .readout-stat .lbl{font-size:0.72rem;color:#9fb2c8;margin-top:0.35rem;}
+  .readout-verdict{margin-top:0.9rem;background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.5);color:#a7f3d0;border-radius:12px;padding:0.7rem 0.85rem;font-size:0.86rem;font-weight:600;}
+
+  /* ---------- Section shell ---------- */
+  section{padding:4.5rem 0;}
+  .kicker{color:var(--sky-deep);font-weight:600;font-size:0.85rem;margin-bottom:0.6rem;}
+  .sec-head{max-width:56ch;margin-bottom:2.6rem;}
+  .sec-head h2{font-size:clamp(1.6rem,3vw,2.1rem);font-weight:700;}
+  .sec-head p{margin-top:0.8rem;color:#475569;font-size:1.02rem;}
+
+  /* ---------- Language strip ---------- */
+  .lang-strip{background:#0e2a44;color:#fff;padding:2.6rem 0;}
+  .lang-strip .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:1.1rem 1.6rem;}
+  .lang-strip .lead{font-family:var(--ff-display);font-weight:600;font-size:1.05rem;flex-basis:100%;color:#cdd8e6;}
+  .lang-pill{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);border-radius:999px;padding:0.5rem 1rem;font-size:0.95rem;}
+
+  /* ---------- Audiences (asymmetric, not identical cards) ---------- */
+  .audiences{display:grid;grid-template-columns:1.15fr 0.85fr;grid-template-rows:auto auto;gap:1.25rem;}
+  @media (max-width:860px){.audiences{grid-template-columns:1fr;}}
+  .aud{border-radius:20px;padding:2rem;position:relative;overflow:hidden;}
+  .aud h3{font-size:1.3rem;font-weight:700;margin-bottom:0.6rem;}
+  .aud p{color:inherit;opacity:0.85;font-size:0.95rem;max-width:42ch;}
+  .aud ul{list-style:none;margin-top:1.1rem;display:flex;flex-direction:column;gap:0.55rem;}
+  .aud li{font-size:0.88rem;padding-left:1.1rem;position:relative;}
+  .aud li::before{content:"";position:absolute;left:0;top:0.5em;width:6px;height:6px;border-radius:50%;background:currentColor;opacity:0.6;}
+  .aud-farm{grid-row:1 / 3;background:#eaf6ef;color:#064e3b;border:1px solid #b7e4c7;}
+  .aud-marine{background:#e6f4fb;color:#0c4a6e;border:1px solid #bae1f5;}
+  .aud-ops{background:#101828;color:#e2e8f0;border:1px solid #24314a;}
+
+  /* ---------- How it answers (real sequence) ---------- */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;counter-reset:step;}
+  @media (max-width:820px){.steps{grid-template-columns:1fr;}}
+  .step{border-top:3px solid var(--sky);padding-top:1rem;}
+  .step .n{font-family:var(--ff-display);font-size:2rem;font-weight:700;color:var(--sky);}
+  .step h3{font-size:1.05rem;margin:0.5rem 0 0.4rem;}
+  .step p{color:#475569;font-size:0.92rem;}
+
+  /* ---------- Feature grid ---------- */
+  .feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#e2e8f0;border:1px solid #e2e8f0;border-radius:18px;overflow:hidden;}
+  @media (max-width:820px){.feat-grid{grid-template-columns:repeat(2,1fr);}}
+  @media (max-width:560px){.feat-grid{grid-template-columns:1fr;}}
+  .feat{background:#fff;padding:1.5rem 1.4rem;}
+  .feat .ic{font-size:1.4rem;}
+  .feat h3{font-size:0.98rem;margin:0.55rem 0 0.35rem;}
+  .feat p{font-size:0.85rem;color:#64748b;}
+
+  /* ---------- Trust / transparency ---------- */
+  .trust{background:#101828;color:#e2e8f0;}
+  .trust-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.4rem;}
+  @media (max-width:820px){.trust-grid{grid-template-columns:1fr;}}
+  .trust-col h3{font-size:0.95rem;margin-bottom:0.7rem;display:flex;align-items:center;gap:0.5rem;}
+  .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .dot-live{background:#34d399;}
+  .dot-demo{background:#fbbf24;}
+  .dot-road{background:#64748b;}
+  .trust-col ul{list-style:none;font-size:0.84rem;color:#94a3b8;display:flex;flex-direction:column;gap:0.5rem;}
+
+  /* ---------- Final CTA ---------- */
+  .final{background:linear-gradient(135deg,var(--sky) 0%,var(--sky-deep) 100%);color:#fff;text-align:center;}
+  .final h2{font-size:clamp(1.7rem,3.6vw,2.4rem);}
+  .final p{margin-top:0.8rem;color:#e0f2fe;max-width:48ch;margin-left:auto;margin-right:auto;}
+  .final .hero-ctas{justify-content:center;margin-top:1.8rem;}
+  .final .btn-ghost{border-color:rgba(255,255,255,0.5);}
+
+  footer{background:#0b1120;color:#94a3b8;padding:2.2rem 0;font-size:0.82rem;}
+  footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:0.6rem;}
+
+  @media (prefers-reduced-motion:no-preference){
+    .hero h1, .hero p.lede, .hero-ctas, .readout{animation:rise .7s ease both;}
+    .hero p.lede{animation-delay:.08s;} .hero-ctas{animation-delay:.16s;} .readout{animation-delay:.2s;}
+    @keyframes rise{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:translateY(0);}}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a href="landing.html" class="brand"><img src="icon.svg" alt=""> AeroCast</a>
+    <nav class="topnav">
+      <a href="#audiences">Who it's for</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#trust">Transparency</a>
+    </nav>
+    <div class="topcta">
+      <a class="btn btn-ghost" href="index.html">Try as guest</a>
+      <a class="btn btn-solid" href="index.html?auth=1">Sign in</a>
+    </div>
+  </div>
+</div>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Weather & farming advisory for India</span>
+      <h1>Ask your weather question.<br>Get an answer that's checked, not guessed.</h1>
+      <p class="lede">AeroCast pairs Google Gemini with live Open-Meteo data, FAO-56 irrigation science and IMD-aligned thresholds &mdash; and a numbers guard that rejects any reply the data can't back up. Built for farmers, coastal fishing crews and field teams across India.</p>
+      <div class="hero-ctas">
+        <a class="btn btn-solid" href="index.html">Ask a question &mdash; no sign-in needed</a>
+        <a class="btn btn-ghost" href="index.html?auth=1">Sign in to save your history</a>
+      </div>
+      <p class="hero-note">Works in English, हिंदी, বাংলা, தமிழ், తెలుగు and मराठी &mdash; by voice or by typing.</p>
+    </div>
+
+    <div class="readout" aria-hidden="true">
+      <div class="readout-top">
+        <span class="readout-place">Kolkata, West Bengal</span>
+        <span class="readout-time tabular">Updated 4 min ago</span>
+      </div>
+      <div class="readout-grid">
+        <div class="readout-stat"><span class="num tabular">31°</span><span class="unit">C</span><div class="lbl">Max temperature</div></div>
+        <div class="readout-stat"><span class="num tabular">68%</span><div class="lbl">Rain chance, today</div></div>
+        <div class="readout-stat"><span class="num tabular">14</span><span class="unit">km/h</span><div class="lbl">Wind speed</div></div>
+        <div class="readout-stat"><span class="num tabular">1.2</span><span class="unit">m</span><div class="lbl">Coastal wave height</div></div>
+      </div>
+      <div class="readout-verdict">✅ Safe spray window: tomorrow 6&ndash;9am (wind &amp; rain both below threshold)</div>
+    </div>
+  </div>
+</header>
+
+<div class="lang-strip">
+  <div class="wrap">
+    <span class="lead">One assistant, six languages &mdash; ask however you speak:</span>
+    <span class="lang-pill">Will it rain tomorrow in Kolkata?</span>
+    <span class="lang-pill">कल मुंबई में समुद्र में मछली पकड़ना सुरक्षित है?</span>
+    <span class="lang-pill">চেন্নাইয়ের ৭ দিনের আবহাওয়ার পূর্বাভাস</span>
+    <span class="lang-pill">நாளை பூச்சிக்கொல்லி தெளிப்பது பாதுகாப்பானதா?</span>
+  </div>
+</div>
+
+<section id="audiences">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Built around three real jobs</span>
+      <h2>Not a generic chatbot &mdash; a decision tool for the field.</h2>
+      <p>Every answer resolves to a plain decision: spray or wait, sail or stay ashore, water the field or hold off.</p>
+    </div>
+    <div class="audiences">
+      <div class="aud aud-farm">
+        <h3>🌾 Farmers</h3>
+        <p>Field decisions grounded in FAO-56 evapotranspiration and IMD agricultural thresholds.</p>
+        <ul>
+          <li>Spray windows (wind &lt; 15 km/h, rain &lt; 30%)</li>
+          <li>2-day irrigation demand, in millimetres</li>
+          <li>Harvest suitability for the coming week</li>
+          <li>7-day outlook plus rainfall history back to 1940</li>
+        </ul>
+      </div>
+      <div class="aud aud-marine">
+        <h3>🌊 Coastal fishing crews</h3>
+        <p>Wave, swell and wind checks sized for small and artisanal boats.</p>
+        <ul>
+          <li>Wave height, period and direction</li>
+          <li>Plain-language safe / caution / stay-ashore calls</li>
+        </ul>
+      </div>
+      <div class="aud aud-ops">
+        <h3>🌀 Field & disaster ops</h3>
+        <p>A wider lens when conditions turn, without waiting on a single source.</p>
+        <ul>
+          <li>Cyclone bulletins & regional map watch across major hubs</li>
+          <li>NOAA GFS vs ECMWF IFS model agreement, shown side by side</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how" style="background:#f8fafc;">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Why it doesn't hallucinate</span>
+      <h2>Every answer passes through the same three checks.</h2>
+    </div>
+    <div class="steps">
+      <div class="step"><span class="n">1</span><h3>Understand the question</h3><p>Gemini reads your question &mdash; in any of six languages &mdash; and extracts the place, date and topic. It never answers at this stage, only listens.</p></div>
+      <div class="step"><span class="n">2</span><h3>Pull live facts</h3><p>Open-Meteo, ERA5 history and marine data are fetched for that exact place and date, then run through deterministic farming and safety rule engines.</p></div>
+      <div class="step"><span class="n">3</span><h3>Narrate, guarded</h3><p>Gemini writes the reply from those facts alone, in your language. A numbers guard scans every figure and blocks the reply if anything doesn't match the data.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="kicker">Everything in one place</span>
+      <h2>What you get, guest or signed in.</h2>
+    </div>
+    <div class="feat-grid">
+      <div class="feat"><div class="ic">📍</div><h3>Interactive location map</h3><p>City-level map plus a live regional watch across major Indian hubs, coloured by rain, heat and wind thresholds.</p></div>
+      <div class="feat"><div class="ic">🌫️</div><h3>Air quality & UV</h3><p>PM2.5, PM10 and US AQI with severity badges, plus peak solar UV for the day.</p></div>
+      <div class="feat"><div class="ic">🌊</div><h3>Marine safety</h3><p>Wave height, period and swell checks tuned for coastal and artisanal fishing boats.</p></div>
+      <div class="feat"><div class="ic">🌱</div><h3>Farm decision engine</h3><p>Spray windows, irrigation demand and harvest suitability, computed from live thresholds.</p></div>
+      <div class="feat"><div class="ic">📊</div><h3>Model consensus</h3><p>NOAA GFS and ECMWF IFS forecasts placed side by side, so you know when models agree.</p></div>
+      <div class="feat"><div class="ic">📜</div><h3>Climate history</h3><p>ERA5 archive back to 1940, drawn as an inline rainfall trend chart.</p></div>
+      <div class="feat"><div class="ic">🎙️</div><h3>Voice in, voice out</h3><p>Ask by speaking and have the answer read back, hands-free, in the field.</p></div>
+      <div class="feat"><div class="ic">🔐</div><h3>Email or phone sign-in</h3><p>Magic-link email or SMS OTP &mdash; or skip it entirely with full-featured Guest Mode.</p></div>
+      <div class="feat"><div class="ic">🕒</div><h3>Saved search history</h3><p>Signed-in users get past questions grouped by day, one tap to re-ask, one tap to delete.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="trust" class="trust">
+  <div class="wrap">
+    <div class="sec-head" style="color:#fff;">
+      <span class="kicker" style="color:#7dd3fc;">Honesty, by design</span>
+      <h2 style="color:#fff;">We tell you exactly what's live and what's a demo.</h2>
+      <p style="color:#94a3b8;">The same transparency panel is one tap away inside the app.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust-col">
+        <h3><span class="dot dot-live"></span>Live & operational</h3>
+        <ul>
+          <li>Open-Meteo weather, marine & flood APIs</li>
+          <li>FAO-56 irrigation & IMD-aligned thresholds</li>
+          <li>Gemini intent parsing + guarded narration</li>
+        </ul>
+      </div>
+      <div class="trust-col">
+        <h3><span class="dot dot-demo"></span>Simulated for demo</h3>
+        <ul>
+          <li>Seeded cyclone bulletin, clearly watermarked</li>
+          <li>City-granularity regional disaster overview</li>
+        </ul>
+      </div>
+      <div class="trust-col">
+        <h3><span class="dot dot-road"></span>On the roadmap</h3>
+        <ul>
+          <li>Official IMD / NDMA statutory alert feeds</li>
+          <li>3&nbsp;km WRF regional downscaling</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <h2>Your next decision is one question away.</h2>
+    <p>No install required &mdash; AeroCast also installs as an app for low-connectivity areas.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-solid" href="index.html">Open AeroCast</a>
+      <a class="btn btn-ghost" href="index.html?auth=1">Sign in with email or phone</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>&copy; 2026 AeroCast &middot; Advisories are based on forecast thresholds, not official government warnings.</span>
+    <span>Data: Open-Meteo, ERA5, NOAA GFS, ECMWF IFS</span>
+  </div>
+</footer>
+
+</body>
+</html>

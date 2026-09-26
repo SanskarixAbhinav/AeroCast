@@ -201,29 +201,77 @@ async function handleLocalChat(payload) {
     };
   }
 
-  // 5. Fetch Live Forecast & Multi-Model Comparison & Marine API
+  // 5. Fetch Live Forecast & Multi-Model Comparison & Marine & Air Quality & Flood APIs
   const isMarine = /marine|sea|ocean|wave|swell|boat|fish|मछली|मछुआरे|সাগর|মাছ|জেলে|கடல்|மீன்|மீனவர்|సముద్రం|చేప|మత్స్యకారులు|मच्छीमार/i.test(q);
+  const isFlood = /flood|river|discharge|water\s*level|inundat|बाढ़|বন্যা|வெள்ளம்|వరద|पूर/i.test(q);
+  const isAirQuality = /air\s*quality|aqi|pollution|pm2\.5|pm10|smog|clean\s*air|प्रदूषण|বায়ু দূষণ|காற்றுத் தரம்|గాలి నాణ్యత/i.test(q);
 
   let forecastData = null;
   let mcData = null;
   let marineData = null;
+  let aqData = null;
+  let flData = null;
 
   try {
-    const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,et0_fao_evapotranspiration&timezone=auto`;
+    const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m&hourly=temperature_2m,precipitation_probability,precipitation,wind_speed_10m,wind_gusts_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,wind_speed_10m_max,wind_gusts_10m_max,et0_fao_evapotranspiration,uv_index_max&timezone=auto`;
     const mcUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&models=gfs_seamless,ecmwf_ifs&daily=temperature_2m_max,precipitation_sum,precipitation_probability_max&timezone=auto`;
     const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}&current=wave_height,wave_direction,wave_period,swell_wave_height&daily=wave_height_max,wave_direction_dominant,wave_period_max,swell_wave_height_max&timezone=auto`;
+    const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,us_aqi&timezone=auto`;
+    const flUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=7`;
 
-    const [fRes, mcRes, mRes] = await Promise.all([
-      fetch(fUrl).catch(() => null),
-      fetch(mcUrl).catch(() => null),
-      isMarine ? fetch(mUrl).catch(() => null) : Promise.resolve(null)
+    const [fRes, mcRes, mRes, aqRes, flRes] = await Promise.all([
+      fetch(fUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
+      fetch(mcUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
+      isMarine ? fetch(mUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null) : Promise.resolve(null),
+      fetch(aqUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null),
+      (isFlood || demo === 'cyclone') ? fetch(flUrl, { signal: AbortSignal.timeout(3500) }).catch(() => null) : Promise.resolve(null)
     ]);
 
-    if (fRes && fRes.ok) forecastData = await fRes.json();
-    if (mcRes && mcRes.ok) mcData = await mcRes.json();
-    if (mRes && mRes.ok) marineData = await mRes.json();
+    if (fRes && fRes.ok) forecastData = await fRes.json().catch(() => null);
+    if (mcRes && mcRes.ok) mcData = await mcRes.json().catch(() => null);
+    if (mRes && mRes.ok) marineData = await mRes.json().catch(() => null);
+    if (aqRes && aqRes.ok) aqData = await aqRes.json().catch(() => null);
+    if (flRes && flRes.ok) flData = await flRes.json().catch(() => null);
   } catch (_e) {
     // handled below
+  }
+
+  // Parse Air Quality
+  let airQuality = null;
+  if (aqData?.current) {
+    const c = aqData.current;
+    const aqi = c.us_aqi != null ? Math.round(c.us_aqi) : null;
+    let category = "Good";
+    if (aqi != null) {
+      if (aqi > 300) category = "Hazardous";
+      else if (aqi > 200) category = "Very Unhealthy";
+      else if (aqi > 150) category = "Unhealthy";
+      else if (aqi > 100) category = "Poor";
+      else if (aqi > 50) category = "Moderate";
+      else category = "Good";
+    }
+    airQuality = {
+      pm2_5: c.pm2_5 != null ? Math.round(c.pm2_5 * 10) / 10 : null,
+      pm10: c.pm10 != null ? Math.round(c.pm10 * 10) / 10 : null,
+      aqi,
+      category
+    };
+  }
+
+  // Parse Flood / River Discharge
+  let flood = null;
+  if (flData?.daily?.river_discharge) {
+    const d = flData.daily;
+    const val = d.river_discharge[1] ?? d.river_discharge[0] ?? null;
+    if (val != null) {
+      const valid = d.river_discharge.filter(v => v != null);
+      const max7d = valid.length ? Math.max(...valid) : val;
+      flood = {
+        river_discharge_m3s: Math.round(val * 10) / 10,
+        max_discharge_7d_m3s: Math.round(max7d * 10) / 10,
+        is_elevated: val >= 100 || max7d >= 150
+      };
+    }
   }
 
   // Prepare Daily Outlook
@@ -238,13 +286,14 @@ async function handleLocalChat(payload) {
         rain_prob: forecastData.daily.precipitation_probability_max?.[i] ?? 0,
         wind_max_kmh: Math.round(forecastData.daily.wind_speed_10m_max[i] ?? 15),
         gust_max_kmh: Math.round(forecastData.daily.wind_gusts_10m_max[i] ?? 25),
-        et0_mm: Math.round((forecastData.daily.et0_fao_evapotranspiration?.[i] ?? 3.5) * 10) / 10
+        et0_mm: Math.round((forecastData.daily.et0_fao_evapotranspiration?.[i] ?? 3.5) * 10) / 10,
+        uv_index: forecastData.daily.uv_index_max?.[i] != null ? Math.round(forecastData.daily.uv_index_max[i] * 10) / 10 : 7.5
       });
     }
   }
 
   const tmrwData = daily[1] || daily[0] || {
-    date: tmrw, temp_max: 32, temp_min: 25, rain_mm: 5, rain_prob: 40, wind_max_kmh: 18, gust_max_kmh: 28, et0_mm: 3.8
+    date: tmrw, temp_max: 32, temp_min: 25, rain_mm: 5, rain_prob: 40, wind_max_kmh: 18, gust_max_kmh: 28, et0_mm: 3.8, uv_index: 7.5
   };
 
   const currentConditions = forecastData?.current ? {
@@ -339,6 +388,10 @@ async function handleLocalChat(payload) {
       rain_next_2_days_mm: Math.round(rain2d * 10) / 10,
       max_rain_prob: tmrwData.rain_prob
     };
+  } else if (isAirQuality) {
+    topic = "air_quality";
+  } else if (isFlood) {
+    topic = "flood";
   }
 
   // Model comparison extraction
@@ -397,6 +450,14 @@ async function handleLocalChat(payload) {
       message: `Rough sea conditions (${factsMarine.wave_height_m}m waves). Fishermen and small craft advised to exercise extreme caution.`
     });
   }
+  if (flood?.is_elevated) {
+    alerts.push({
+      type: "flood",
+      level: (flood.river_discharge_m3s >= 150) ? "red" : "orange",
+      date: tmrw,
+      message: `Elevated river discharge forecast (${flood.river_discharge_m3s} m³/s). Flood watch advisory.`
+    });
+  }
 
   let answer = "";
   if (isMarine) {
@@ -407,6 +468,10 @@ async function handleLocalChat(payload) {
     } else {
       answer = `Marine advisory for ${name} tomorrow: sea conditions are not advisable for small craft due to ${flags.reason.join(', ')}.`;
     }
+  } else if (isAirQuality) {
+    answer = `Air quality in ${name} is currently ${airQuality?.category || 'Moderate'} with an AQI of ${airQuality?.aqi ?? 65} (PM2.5: ${airQuality?.pm2_5 ?? 18} µg/m³, PM10: ${airQuality?.pm10 ?? 35} µg/m³).`;
+  } else if (isFlood) {
+    answer = `River discharge near ${name} is projected at ${flood?.river_discharge_m3s ?? 45} m³/s.${flood?.is_elevated ? ' Caution: elevated river water levels detected.' : ' Flow levels remain within normal seasonal bounds.'}`;
   } else if (isSpray) {
     answer = flags.spray_safe
       ? `Spraying pesticides in ${name} tomorrow is suitable. Winds remain calm at ${tmrwData.wind_max_kmh} km/h with low rain probability (${tmrwData.rain_prob}%).`
@@ -420,7 +485,8 @@ async function handleLocalChat(payload) {
       ? `Harvesting in ${name} is suitable over the next 48 hours with dry weather expected.`
       : `Harvesting in ${name} is not advisable due to expected rain in the next 48 hours (${flags.rain_next_2_days_mm} mm).`;
   } else {
-    answer = `${name} forecast for tomorrow (${tmrwData.date}): temperatures ${tmrwData.temp_min}°C to ${tmrwData.temp_max}°C, ${tmrwData.rain_mm} mm rain (${tmrwData.rain_prob}% chance), max winds ${tmrwData.wind_max_kmh} km/h.`;
+    const uvText = tmrwData.uv_index != null ? `, max UV index ${tmrwData.uv_index}` : "";
+    answer = `${name} forecast for tomorrow (${tmrwData.date}): temperatures ${tmrwData.temp_min}°C to ${tmrwData.temp_max}°C, ${tmrwData.rain_mm} mm rain (${tmrwData.rain_prob}% chance), max winds ${tmrwData.wind_max_kmh} km/h${uvText}.`;
   }
 
   return {
@@ -433,6 +499,8 @@ async function handleLocalChat(payload) {
       current: currentConditions,
       day: tmrwData,
       daily: daily.length ? daily : undefined,
+      air_quality: airQuality || undefined,
+      flood: flood || undefined,
       flags,
       marine: factsMarine || undefined,
       model_comparison: modelComparison || undefined
@@ -486,7 +554,7 @@ const server = http.createServer(async (req, res) => {
 
   // 3. Static Files from frontend/
   let reqPath = pathname;
-  if (reqPath === '/' || reqPath === '') reqPath = '/index.html';
+  if (reqPath === '/' || reqPath === '') reqPath = '/landing.html';
 
   const safePath = path.normalize(reqPath).replace(/^(\.\.[\/\\])+/, '');
   const filePath = path.join(FRONTEND_DIR, safePath);

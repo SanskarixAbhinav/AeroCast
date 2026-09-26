@@ -10,7 +10,13 @@ window.CONFIG = {
   // Set to true to test with built-in realistic canned responses without any backend:
   USE_MOCK: false,
 
-  // Optional: If you deploy the Edge Function with JWT verification enabled,
-  // provide the Supabase anon key here:
+  // Your Supabase project URL (used for both the /chat function fallback above
+  // and for Supabase Auth + Search History below). Safe to expose publicly.
+  SUPABASE_URL: "https://cefbgewshgyekkkwcqxb.supabase.co",
+
+  // Supabase anon (public) key. Required for sign-in (email / phone) and for
+  // the search history feature. Also sent as a bearer token to the Edge
+  // Function above when JWT verification is enabled there.
+  // Find it in Supabase Dashboard -> Project Settings -> API -> anon public key.
   ANON_KEY: ""
 };

@@ -928,6 +928,9 @@
         addBubble('assistant', ans, data.meta);
         renderData(data.facts, data.alerts, data.meta);
         if (isTts) speak(ans);
+        window.dispatchEvent(new CustomEvent('aerocast:query-answered', {
+          detail: { question: q, lang: currentLang, location: data.facts?.location || null, topic: data.facts?.topic || null }
+        }));
       }
     } catch (err) {
       const isTime = err.name === 'AbortError';
@@ -948,6 +951,7 @@
   function setLanguage(lang) {
     currentLang = lang;
     try { localStorage.setItem('weathergpt_lang', lang); } catch (_e) {}
+    window.dispatchEvent(new CustomEvent('aerocast:lang-changed', { detail: { lang } }));
     const t = I18N[lang] || I18N.en;
     $('ui-title').textContent = t.title;
     $('ui-subtitle').textContent = t.subtitle;
@@ -973,6 +977,10 @@
 
   // --- 9. Event Listeners & Wire-up ---
   $('chatForm').onsubmit = (e) => { e.preventDefault(); sendMsg($('chatInput').value); };
+  window.addEventListener('aerocast:reask', (e) => {
+    const text = e.detail?.text;
+    if (text) sendMsg(text);
+  });
   $('langSelect').value = currentLang;
   $('langSelect').onchange = (e) => setLanguage(e.target.value);
   $('cycloneToggle').checked = isCyclone;
