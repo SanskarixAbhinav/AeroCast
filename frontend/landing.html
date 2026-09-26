@@ -67,16 +67,25 @@
   .hero-ctas{display:flex;gap:0.8rem;margin-top:2rem;flex-wrap:wrap;}
   .hero-note{margin-top:1.1rem;font-size:0.82rem;color:#9fb2c8;}
 
-  .readout{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:1.5rem 1.6rem;backdrop-filter:blur(6px);}
-  .readout-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.1rem;}
-  .readout-place{font-weight:700;font-size:0.98rem;}
-  .readout-time{font-size:0.74rem;color:#9fb2c8;}
+  .readout{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.14);border-radius:20px;padding:1.5rem 1.6rem;backdrop-filter:blur(6px);transition:opacity .35s;}
+  .readout.loading{opacity:0.55;pointer-events:none;}
+  .readout-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.1rem;gap:0.5rem;}
+  .readout-place-wrap{display:flex;flex-direction:column;gap:0.2rem;}
+  .readout-place{font-weight:700;font-size:0.98rem;display:flex;align-items:center;gap:0.35rem;}
+  .readout-loc-pill{display:inline-flex;align-items:center;gap:0.25rem;font-size:0.7rem;font-weight:600;color:#93c5fd;background:rgba(147,197,253,0.12);border:1px solid rgba(147,197,253,0.3);border-radius:999px;padding:0.15rem 0.5rem;}
+  .readout-time{font-size:0.74rem;color:#9fb2c8;white-space:nowrap;padding-top:0.1rem;}
   .readout-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:0.9rem;}
-  .readout-stat{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:0.85rem 0.9rem;}
+  .readout-stat{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:0.85rem 0.9rem;transition:opacity .3s;}
   .readout-stat .num{font-family:var(--ff-display);font-size:1.9rem;font-weight:700;line-height:1;}
   .readout-stat .unit{font-size:0.95rem;font-weight:500;color:#cdd8e6;margin-left:0.15rem;}
   .readout-stat .lbl{font-size:0.72rem;color:#9fb2c8;margin-top:0.35rem;}
   .readout-verdict{margin-top:0.9rem;background:rgba(16,185,129,0.16);border:1px solid rgba(16,185,129,0.5);color:#a7f3d0;border-radius:12px;padding:0.7rem 0.85rem;font-size:0.86rem;font-weight:600;}
+  .readout-verdict.warn{background:rgba(251,191,36,0.14);border-color:rgba(251,191,36,0.45);color:#fde68a;}
+  .loc-btn{display:inline-flex;align-items:center;gap:0.35rem;background:rgba(255,255,255,0.09);border:1px solid rgba(255,255,255,0.22);border-radius:999px;color:#e2e8f0;font-size:0.74rem;font-weight:600;padding:0.3rem 0.75rem;cursor:pointer;transition:background .2s,border-color .2s;margin-top:0.7rem;width:100%;justify-content:center;}
+  .loc-btn:hover{background:rgba(255,255,255,0.16);border-color:rgba(255,255,255,0.4);}
+  .loc-btn:disabled{opacity:0.5;cursor:not-allowed;}
+  @keyframes shimmer{0%{opacity:1;}50%{opacity:0.45;}100%{opacity:1;}}
+  .shimmer{animation:shimmer 1.4s ease-in-out infinite;}
 
   /* ---------- Section shell ---------- */
   section{padding:4.5rem 0;}
@@ -180,18 +189,25 @@
       <p class="hero-note">Works in English, हिंदी, বাংলা, தமிழ், తెలుగు and मराठी &mdash; by voice or by typing.</p>
     </div>
 
-    <div class="readout" aria-hidden="true">
+    <div class="readout" id="heroReadout" aria-label="Live weather readout">
       <div class="readout-top">
-        <span class="readout-place">Kolkata, West Bengal</span>
-        <span class="readout-time tabular">Updated 4 min ago</span>
+        <div class="readout-place-wrap">
+          <span class="readout-place" id="roPlace"><span class="shimmer">Detecting location…</span></span>
+          <span class="readout-loc-pill" id="roLocPill" style="display:none">📍 Your location</span>
+        </div>
+        <span class="readout-time tabular" id="roTime">—</span>
       </div>
       <div class="readout-grid">
-        <div class="readout-stat"><span class="num tabular">31°</span><span class="unit">C</span><div class="lbl">Max temperature</div></div>
-        <div class="readout-stat"><span class="num tabular">68%</span><div class="lbl">Rain chance, today</div></div>
-        <div class="readout-stat"><span class="num tabular">14</span><span class="unit">km/h</span><div class="lbl">Wind speed</div></div>
-        <div class="readout-stat"><span class="num tabular">1.2</span><span class="unit">m</span><div class="lbl">Coastal wave height</div></div>
+        <div class="readout-stat"><span class="num tabular shimmer" id="roTemp">—°</span><span class="unit">C</span><div class="lbl">Max temperature</div></div>
+        <div class="readout-stat"><span class="num tabular shimmer" id="roRain">—%</span><div class="lbl">Rain chance, today</div></div>
+        <div class="readout-stat"><span class="num tabular shimmer" id="roWind">—</span><span class="unit">km/h</span><div class="lbl">Wind speed</div></div>
+        <div class="readout-stat"><span class="num tabular shimmer" id="roWave">—</span><span class="unit">m</span><div class="lbl">Coastal wave height</div></div>
       </div>
-      <div class="readout-verdict">✅ Safe spray window: tomorrow 6&ndash;9am (wind &amp; rain both below threshold)</div>
+      <div class="readout-verdict shimmer" id="roVerdict">Loading advisory…</div>
+      <button class="loc-btn" id="roLocBtn" type="button" title="Refresh with your device location">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><path d="M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M19.07 4.93l-2.12 2.12M7.05 16.95l-2.12 2.12"/></svg>
+        Use my location
+      </button>
     </div>
   </div>
 </header>
@@ -199,10 +215,12 @@
 <div class="lang-strip">
   <div class="wrap">
     <span class="lead">One assistant, six languages &mdash; ask however you speak:</span>
-    <span class="lang-pill">Will it rain tomorrow in Kolkata?</span>
-    <span class="lang-pill">कल मुंबई में समुद्र में मछली पकड़ना सुरक्षित है?</span>
-    <span class="lang-pill">চেন্নাইয়ের ৭ দিনের আবহাওয়ার পূর্বাভাস</span>
-    <span class="lang-pill">நாளை பூச்சிக்கொல்லி தெளிப்பது பாதுகாப்பானதா?</span>
+    <span class="lang-pill" title="English">Will it rain tomorrow in Kolkata?</span>
+    <span class="lang-pill" title="Hindi — हिंदी">कल मुंबई में समुद्र में मछली पकड़ना सुरक्षित है?</span>
+    <span class="lang-pill" title="Bengali — বাংলা">চেন্নাইয়ের ৭ দিনের আবহাওয়ার পূর্বাভাস</span>
+    <span class="lang-pill" title="Tamil — தமிழ்">நாளை பூச்சிக்கொல்லி தெளிப்பது பாதுகாப்பானதா?</span>
+    <span class="lang-pill" title="Telugu — తెలుగు">రేపు చెన్నైలో చేపల వేటకు వెళ్లడం సురక్షితమేనా?</span>
+    <span class="lang-pill" title="Marathi — मराठी">उद्या कोलकात्यात कीटकनाशक फवारणी सुरक्षित आहे का?</span>
   </div>
 </div>
 
@@ -330,5 +348,189 @@
   </div>
 </footer>
 
+<script>
+(function(){
+  'use strict';
+
+  // ── DOM refs ──────────────────────────────────────────────────────────────
+  const roPlace   = document.getElementById('roPlace');
+  const roLocPill = document.getElementById('roLocPill');
+  const roTime    = document.getElementById('roTime');
+  const roTemp    = document.getElementById('roTemp');
+  const roRain    = document.getElementById('roRain');
+  const roWind    = document.getElementById('roWind');
+  const roWave    = document.getElementById('roWave');
+  const roVerdict = document.getElementById('roVerdict');
+  const roLocBtn  = document.getElementById('roLocBtn');
+  const readout   = document.getElementById('heroReadout');
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  function stopShimmer(el){ el.classList.remove('shimmer'); }
+
+  function fmtAgo(isoStr){
+    const diff = Math.round((Date.now() - new Date(isoStr)) / 60000);
+    if (diff < 1)  return 'Just now';
+    if (diff === 1) return '1 min ago';
+    if (diff < 60)  return diff + ' min ago';
+    return Math.round(diff / 60) + ' hr ago';
+  }
+
+  // ── Populate card from Open-Meteo data ────────────────────────────────────
+  function populate(label, wx, isDeviceLoc){
+    roPlace.innerHTML = '';
+    roPlace.textContent = label;
+    roLocPill.style.display = isDeviceLoc ? 'inline-flex' : 'none';
+
+    const d = wx.daily;
+    const todayIdx = 0;
+    const tmrwIdx  = 1;
+
+    const tempMax  = d.temperature_2m_max?.[todayIdx];
+    const rainProb = d.precipitation_probability_max?.[todayIdx];
+    const windMax  = d.wind_speed_10m_max?.[todayIdx];
+
+    // Coastal wave height from marine API (may be null for inland)
+    const wave = wx._wave != null ? wx._wave : null;
+
+    roTemp.textContent  = tempMax  != null ? Math.round(tempMax) + '°' : '—°';
+    roRain.textContent  = rainProb != null ? rainProb + '%'            : '—%';
+    roWind.textContent  = windMax  != null ? Math.round(windMax)       : '—';
+    roWave.textContent  = wave     != null ? wave.toFixed(1)           : '—';
+
+    stopShimmer(roTemp); stopShimmer(roRain);
+    stopShimmer(roWind); stopShimmer(roWave);
+
+    // Advisory verdict (spray window logic)
+    const tmrwRain = d.precipitation_probability_max?.[tmrwIdx] ?? 0;
+    const tmrwWind = d.wind_speed_10m_max?.[tmrwIdx] ?? 0;
+    const tmrwTemp = d.temperature_2m_max?.[tmrwIdx] ?? 30;
+    const spraySafe = tmrwRain < 30 && tmrwWind <= 15 && tmrwTemp <= 35;
+    roVerdict.classList.remove('shimmer','warn');
+    if (spraySafe){
+      roVerdict.textContent = '✅ Safe spray window: tomorrow 6\u20139am (wind & rain both below threshold)';
+    } else {
+      const reasons = [];
+      if (tmrwRain >= 30) reasons.push('rain likely');
+      if (tmrwWind > 15)  reasons.push('wind > 15 km/h');
+      if (tmrwTemp > 35)  reasons.push('heat > 35°C');
+      roVerdict.classList.add('warn');
+      roVerdict.textContent = '⚠️ Spray caution tomorrow: ' + reasons.join(', ');
+    }
+
+    roTime.textContent = 'Updated ' + fmtAgo(wx.current?.time
+      ? wx.current.time + ':00' : new Date().toISOString());
+  }
+
+  // ── Fetch weather for lat/lon ─────────────────────────────────────────────
+  async function fetchWeather(lat, lon){
+    const SIG = AbortSignal.timeout(8000);
+    const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`
+      + `&current=temperature_2m,precipitation,wind_speed_10m`
+      + `&daily=temperature_2m_max,precipitation_probability_max,wind_speed_10m_max`
+      + `&timezone=auto&forecast_days=3`;
+    const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lon}`
+      + `&current=wave_height&timezone=auto`;
+
+    const [fRes, mRes] = await Promise.all([
+      fetch(fUrl, { signal: SIG }).catch(() => null),
+      fetch(mUrl, { signal: AbortSignal.timeout(6000) }).catch(() => null)
+    ]);
+
+    const wx = fRes && fRes.ok ? await fRes.json().catch(() => null) : null;
+    if (!wx) throw new Error('forecast unavailable');
+    if (mRes && mRes.ok){
+      const md = await mRes.json().catch(() => null);
+      wx._wave = md?.current?.wave_height ?? null;
+    } else {
+      wx._wave = null;
+    }
+    return wx;
+  }
+
+  // ── Reverse-geocode lat/lon → place label ─────────────────────────────────
+  async function reverseGeocode(lat, lon){
+    // Open-Meteo geocoding doesn't support reverse; we use their search
+    // with the nearest city via a simple bounding-box approximation —
+    // or fall back to "Lat, Lon" which is still honest.
+    try {
+      const url = `https://geocoding-api.open-meteo.com/v1/search`
+        + `?name=${lat.toFixed(2)},${lon.toFixed(2)}&count=1&language=en&format=json`;
+      // That won't work for reverse; use a coords-based service instead:
+      // nominatim free tier (usage policy: 1 req/s, must not cache in prod)
+      const nUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=10`;
+      const res = await fetch(nUrl, {
+        headers: { 'Accept-Language': 'en', 'User-Agent': 'AeroCast/1.0' },
+        signal: AbortSignal.timeout(5000)
+      });
+      if (!res.ok) return null;
+      const j = await res.json();
+      const a = j.address || {};
+      // Build a clean label from the most useful fields
+      const city  = a.city || a.town || a.village || a.county || '';
+      const state = a.state || '';
+      return [city, state].filter(Boolean).join(', ') || j.display_name?.split(',')[0] || null;
+    } catch(_){ return null; }
+  }
+
+  // ── Main refresh function ─────────────────────────────────────────────────
+  async function loadWeather(lat, lon, isDeviceLoc, forceLabel){
+    readout.classList.add('loading');
+    roLocBtn.disabled = true;
+
+    try {
+      // 1. Figure out place name
+      let label = forceLabel;
+      if (!label){
+        const geo = await reverseGeocode(lat, lon);
+        label = geo || `${lat.toFixed(2)}°N, ${lon.toFixed(2)}°E`;
+      }
+
+      // 2. Fetch weather
+      const wx = await fetchWeather(lat, lon);
+
+      // 3. Populate card
+      populate(label, wx, isDeviceLoc);
+    } catch(err){
+      roPlace.textContent = 'Weather unavailable';
+      stopShimmer(roPlace);
+      roVerdict.textContent = '⚠️ Could not load live data. Check your connection.';
+      roVerdict.classList.remove('shimmer'); roVerdict.classList.add('warn');
+      console.warn('AeroCast readout:', err);
+    } finally {
+      readout.classList.remove('loading');
+      roLocBtn.disabled = false;
+    }
+  }
+
+  // ── Geolocation flow ──────────────────────────────────────────────────────
+  function requestLocation(){
+    if (!navigator.geolocation){
+      // No geolocation API — fall back to Kolkata
+      loadWeather(22.5726, 88.3639, false, 'Kolkata, West Bengal');
+      return;
+    }
+    roPlace.innerHTML = '<span class="shimmer">Detecting location\u2026</span>';
+    roLocBtn.disabled = true;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        loadWeather(pos.coords.latitude, pos.coords.longitude, true, null);
+      },
+      (_err) => {
+        // Denied or unavailable — fall back to Kolkata silently
+        loadWeather(22.5726, 88.3639, false, 'Kolkata, West Bengal');
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+    );
+  }
+
+  // ── Wire-up & boot ────────────────────────────────────────────────────────
+  roLocBtn.addEventListener('click', requestLocation);
+
+  // On first load: try geolocation automatically (silent — no browser prompt
+  // noise if the user has already denied it); then fall back.
+  requestLocation();
+
+})();
+</script>
 </body>
 </html>
