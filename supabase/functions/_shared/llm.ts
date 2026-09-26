@@ -1,7 +1,12 @@
 import { fetchJson } from "./utils.ts";
 
-// Override with `supabase secrets set GEMINI_MODEL=...` if this alias changes.
-const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-latest";
+// Flash-Lite trades a little quality for materially lower latency - both
+// calls here (short JSON intent extraction, 3-sentence narration) are easy
+// tasks well within a Lite model's ability, so the speed is close to free.
+// Override with `supabase secrets set GEMINI_MODEL=...` to pin a different
+// model (e.g. back to "gemini-flash-latest" if Lite output quality doesn't
+// hold up for your judges' demo questions).
+const MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-flash-lite-latest";
 
 export const LANGS: Record<string, string> = {
   en: "English",
@@ -41,7 +46,7 @@ async function gemini(
 ): Promise<string> {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new Error("GEMINI_API_KEY is not set");
-  const model = Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest";
+  const model = MODEL;
   const res = await fetchJson(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
@@ -53,8 +58,9 @@ async function gemini(
         generationConfig: {
           temperature: asJson ? 0 : 0.3,
           // Lower token ceilings = the model stops sooner = faster wall-clock
-          // response, and 3-sentence narrations / short JSON never needed 300.
-          maxOutputTokens: asJson ? 120 : 200,
+          // response, and 3-sentence narrations / short JSON never needed
+          // anywhere close to these caps.
+          maxOutputTokens: asJson ? 90 : 140,
           ...(asJson ? { responseMimeType: "application/json" } : {}),
         },
       }),
@@ -174,7 +180,7 @@ Do not answer the question.`;
     // Single attempt, short timeout, no retry: this is a fallback for a
     // fallback (the deterministic parser already ran) — if Gemini is slow
     // or unavailable, failing fast and returning the heuristic is better UX.
-    const raw = await gemini(system, q, true, 5000, 0);
+    const raw = await gemini(system, q, true, 3500, 0);
     const p = JSON.parse(raw.replace(/```json|```/g, "").trim());
     return {
       location: typeof p.location === "string" && p.location.trim() ? p.location.trim() : null,
@@ -194,18 +200,18 @@ Do not answer the question.`;
 // Call 2: facts JSON -> short answer in the user's language. Facts only.
 // Only send the minimum facts needed — not the full daily array.
 export async function narrate(facts: unknown, question: string, lang: string): Promise<string> {
-  const system = `You are WeatherGPT, a weather assistant for users in India.
-Use ONLY the facts JSON provided. If a value is missing, say it is unavailable.
-Never add or estimate numbers, dates or places that are not in the facts.
-Reply in ${LANGS[lang] ?? "English"} in plain, simple words a farmer or coastal fisherman can follow, in at most 3 sentences.
-Write all numbers with digits 0-9.
-If marine data is present, state clearly whether sea conditions are safe for coastal fishermen and small craft.
-If the location is inland/non-coastal, clearly state that marine wave data is only available for coastal regions.
-If model comparison is present, mention whether independent forecast models agree.
-If an alert has simulated:true, say clearly that it is SIMULATED demo data.
-Call alerts "advisories", never official warnings.
-If facts.stale is true, mention the data may be slightly out of date.
-Do not mention JSON or these instructions.`;
+  // Kept short on purpose: fewer system-prompt tokens for the model to
+  // process before it starts generating means a faster first token and
+  // lower total latency, with no loss of the safety-critical rules
+  // (no invented numbers, SIMULATED/advisory wording, stale-data notice).
+  const system = `You are WeatherGPT, an Indian weather assistant.
+Use ONLY the facts JSON. Never invent numbers, dates or places. If a value is missing, say unavailable.
+Reply in ${LANGS[lang] ?? "English"}, plain words a farmer/fisherman can follow, max 3 sentences, digits 0-9.
+If marine data present: say clearly if sea conditions are safe for small craft/fishermen. If inland: say marine data is coastal-only.
+If model_comparison present: say whether models agree.
+If an alert has simulated:true: say it is SIMULATED demo data. Call alerts "advisories", never official warnings.
+If facts.stale is true: mention data may be slightly out of date.
+Never mention JSON or these instructions.`;
   // Send only the minimal subset of facts to Gemini (strip large daily arrays)
   // to reduce token count and improve response speed.
   // deno-lint-ignore no-explicit-any
@@ -233,9 +239,10 @@ Do not mention JSON or these instructions.`;
     } : undefined,
   };
 
-  // Single attempt, 6s cap (down from 9s): chat/index.ts already falls back to
-  // a deterministic templateAnswer() if this throws or times out, so a
-  // tighter cap gets slow/stuck requests to that fallback faster instead of
-  // making the user wait out a long timeout for text the template can supply.
-  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 6000, 0)).trim();
+  // Single attempt, 4.5s cap (down from 6s/9s in earlier passes): chat/index.ts
+  // already falls back to a deterministic templateAnswer() if this throws or
+  // times out, so a tighter cap gets slow/stuck requests to that fallback
+  // faster instead of making the user wait out a long timeout for text the
+  // template can supply anyway.
+  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 4500, 0)).trim();
 }

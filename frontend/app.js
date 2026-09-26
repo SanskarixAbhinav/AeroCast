@@ -1138,7 +1138,12 @@
   // Register PWA Service Worker
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then((reg) => {
+        // Ask the SW to check for a fresh version right away, so a phone
+        // that already installed an older service worker (before this
+        // fix) doesn't keep serving stale app.js/style.css indefinitely.
+        reg.update().catch(() => {});
+      }).catch(() => {});
     });
   }
 
