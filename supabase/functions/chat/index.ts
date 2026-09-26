@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
     };
   }
   // Timing/profiling visibility in edge function logs.
-  console.log(`[chat] "${log.question ?? ""}" -> ${log.latency_ms}ms`, timings);
+  console.log(`[chat] "${log.question ?? ""}" -> ${log.latency_ms}ms`, log.timings ?? {});
 
   // Fire-and-forget: don't block the response waiting for DB write.
   // background() uses EdgeRuntime.waitUntil on Deno Deploy so the write
