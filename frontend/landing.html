@@ -9,13 +9,19 @@
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- Noto Sans Indic families added alongside Inter/Space Grotesk so the six
+     language names below (हिंदी, বাংলা, தமிழ், తెలుగు, मराठी) always render
+     with real glyphs instead of tofu boxes when the visitor's OS has no
+     Telugu/Tamil/Bengali/Devanagari font installed (the previous cause of
+     the language line looking like it only listed 4 languages). -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600&family=Noto+Sans+Bengali:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&family=Noto+Sans+Telugu:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#0b1120; --ink-soft:#141d33; --paper:#f5f7f4;
     --sky:#0284c7; --sky-deep:#0369a1; --amber:#f59e0b; --leaf:#10b981;
     --rain:#38bdf8; --line:rgba(245,247,244,0.14); --muted:#94a3b8;
-    --ff-display:'Space Grotesk',system-ui,sans-serif; --ff-body:'Inter',system-ui,sans-serif;
+    --ff-display:'Space Grotesk',system-ui,sans-serif;
+    --ff-body:'Inter','Noto Sans Devanagari','Noto Sans Bengali','Noto Sans Tamil','Noto Sans Telugu',system-ui,sans-serif;
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
   html{scroll-behavior:smooth;}
@@ -41,6 +47,14 @@
   .btn-solid{background:var(--amber);color:#1c1300;}
   .btn-solid:hover{background:#fbbf24;}
   @media (max-width:760px){.topnav{display:none;}}
+  /* Below ~480px, .brand + the two .topcta buttons (no wrap, fixed height
+     bar) no longer fit on one 64px-tall row and were clipping/overlapping.
+     Let the bar wrap into two rows and shrink the buttons a bit instead. */
+  @media (max-width:480px){
+    .topbar .wrap{flex-wrap:wrap;height:auto;padding-top:0.6rem;padding-bottom:0.6rem;row-gap:0.5rem;}
+    .topcta{width:100%;justify-content:flex-start;}
+    .topcta .btn{font-size:0.8rem;padding:0.5rem 0.8rem;}
+  }
 
   /* ---------- Hero ---------- */
   .hero{background:linear-gradient(165deg,#0b1120 0%,#0e2a44 55%,#0b4a63 100%);color:#fff;position:relative;overflow:hidden;padding:4.5rem 0 5rem;}

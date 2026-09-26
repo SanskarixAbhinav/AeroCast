@@ -16,7 +16,14 @@
   <!-- Leaflet Map CSS: cdnjs primary, unpkg fallback if cdnjs is blocked/unreachable -->
   <link id="leafletCss" rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin=""
     onerror="this.onerror=null;this.removeAttribute('integrity');this.href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';" />
-  
+
+  <!-- Noto Sans Indic families: guarantees हिंदी/বাংলা/தமிழ்/తెలుగు/मराठी chips,
+       chat bubbles and UI text render with real glyphs on any device, even
+       ones without those scripts' fonts installed at the OS level. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Devanagari:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500;600;700&family=Noto+Sans+Tamil:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <!-- App Stylesheet -->
   <link rel="stylesheet" href="style.css">
 </head>

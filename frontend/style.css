@@ -2,7 +2,11 @@
 
 :root {
   /* High contrast palette readable in bright sunlight */
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Noto Sans Indic families come first as fallbacks (loaded in index.html)
+     so Hindi/Bengali/Tamil/Telugu text always has real glyphs available,
+     regardless of what's installed at the OS level. */
+  --font-sans: 'Noto Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    'Noto Sans Devanagari', 'Noto Sans Bengali', 'Noto Sans Tamil', 'Noto Sans Telugu', sans-serif;
   --bg-page: #f1f5f9;
   --bg-surface: #ffffff;
   --bg-surface-subtle: #f8fafc;
@@ -119,6 +123,15 @@ body {
   line-height: 1.5;
   -webkit-text-size-adjust: 100%;
   overflow-x: hidden;
+}
+
+/* Friendlier touch feedback on mobile: no lingering gray flash on tap,
+   and every button gets a visible press state instead of feeling inert. */
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+button:active {
+  transform: scale(0.97);
 }
 
 /* Accessibility */
@@ -361,6 +374,7 @@ body {
 .chat-thread {
   flex: 1;
   overflow-y: auto;
+  scroll-behavior: smooth;
   padding: 1rem;
   display: flex;
   flex-direction: column;
@@ -449,6 +463,11 @@ body {
 .btn-speaker:hover {
   color: var(--primary);
   background-color: var(--primary-subtle);
+}
+
+/* Hidden while the "Read aloud" header toggle is off (see app.js) */
+.btn-speaker-hidden {
+  display: none;
 }
 
 /* Retry Button */
@@ -1434,6 +1453,8 @@ body {
 .auth-controls {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 0.4rem;
   gap: 0.5rem;
 }
 
@@ -1845,4 +1866,57 @@ body {
 
 @media (max-width: 640px) {
   .user-chip-label { max-width: 90px; }
+}
+
+/* ===========================================================
+   Small-screen (phone) layout hardening.
+   The header packs a lot of controls (brand, language select, 2
+   toggles, Scope & Roadmap, History/Sign-in/user chip). On narrow
+   viewports these used to crowd into one row and visually collide;
+   below this width the header becomes a clean two-row stack and
+   every control shrinks slightly so nothing clips or overlaps.
+   =========================================================== */
+@media (max-width: 560px) {
+  .app-header {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .brand { justify-content: flex-start; }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.5rem;
+  }
+
+  .auth-controls { width: 100%; }
+
+  .ctrl-btn-arch,
+  .ctrl-select {
+    font-size: 0.72rem;
+    padding: 0.3rem 0.5rem;
+  }
+
+  .toggle-control { gap: 0.35rem; }
+  .toggle-label { font-size: 0.72rem; }
+  .toggle-slider { width: 36px; height: 20px; }
+  .toggle-slider::before { width: 14px; height: 14px; }
+  .toggle-control input:checked + .toggle-slider::before { transform: translateX(16px); }
+
+  .user-chip-label { max-width: 72px; }
+}
+
+@media (max-width: 380px) {
+  /* Extremely narrow phones: drop the toggle text labels entirely and
+     rely on the switch + the existing title="" tooltip, so the two
+     switches don't force a third row on top of everything else. */
+  .toggle-label { display: none; }
+}
+
+/* Chat bubble action row (speaker icon + latency pill) can wrap under
+   the message text instead of squeezing/overlapping on narrow bubbles. */
+@media (max-width: 480px) {
+  .bubble-actions { flex-wrap: wrap; row-gap: 0.3rem; }
 }

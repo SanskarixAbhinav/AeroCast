@@ -52,7 +52,9 @@ async function gemini(
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: {
           temperature: asJson ? 0 : 0.3,
-          maxOutputTokens: asJson ? 150 : 300,
+          // Lower token ceilings = the model stops sooner = faster wall-clock
+          // response, and 3-sentence narrations / short JSON never needed 300.
+          maxOutputTokens: asJson ? 120 : 200,
           ...(asJson ? { responseMimeType: "application/json" } : {}),
         },
       }),
@@ -96,8 +98,23 @@ function fallbackParseIntent(q: string): Intent {
   else if (/forecast|week|7-day|weather|mausam/i.test(qLower)) topic = "forecast";
 
   // Location extraction
+  // NOTE 1: prepositions below are wrapped in \b (word boundary) so "in"
+  // never matches mid-word inside "rain", "raining", "spraying", etc.
+  // Without the boundary, "Will it rain tomorrow in Kolkata?" matched the
+  // "in" inside "rain" and captured "tomorrow in Kolkata" as the place.
+  // NOTE 2: the captured place must look like a proper noun (Title Case).
+  // Without that, a query with more than one preposition before the real
+  // city — e.g. "Is it safe for coastal fishing in Mumbai tomorrow?" or
+  // "irrigation advice for my farm in Pune" — matched the *first*
+  // preposition ("for") and swallowed everything up to the date word
+  // ("coastal fishing in Mumbai", "my farm in Pune") instead of just the
+  // city. Requiring Title Case skips straight past lowercase phrases like
+  // "for coastal" / "for my" to the actual capitalized city name.
+  // A lowercase-typed query (no capital letters at all) simply won't match
+  // here and falls through to the CITIES list below, which is
+  // case-insensitive — so this is a strict improvement, not a regression.
   let location: string | null = null;
-  const inMatch = q.match(/(?:in|at|for|near|around)\s+([A-Za-z\s]+?)(?:\s+(?:today|tomorrow|yesterday|now|this|next|on|during)|\?|$|\.)/i);
+  const inMatch = q.match(/\b(?:in|at|for|near|around)\b\s+([A-Z][a-zA-Z]*(?:\s+[A-Z][a-zA-Z]*)*)/);
   if (inMatch && inMatch[1].trim()) {
     location = inMatch[1].trim();
   } else {
@@ -157,7 +174,7 @@ Do not answer the question.`;
     // Single attempt, short timeout, no retry: this is a fallback for a
     // fallback (the deterministic parser already ran) — if Gemini is slow
     // or unavailable, failing fast and returning the heuristic is better UX.
-    const raw = await gemini(system, q, true, 6000, 0);
+    const raw = await gemini(system, q, true, 5000, 0);
     const p = JSON.parse(raw.replace(/```json|```/g, "").trim());
     return {
       location: typeof p.location === "string" && p.location.trim() ? p.location.trim() : null,
@@ -216,7 +233,9 @@ Do not mention JSON or these instructions.`;
     } : undefined,
   };
 
-  // Single attempt, 9s cap: chat/index.ts already falls back to a
-  // deterministic templateAnswer() if this throws or times out.
-  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 9000, 0)).trim();
+  // Single attempt, 6s cap (down from 9s): chat/index.ts already falls back to
+  // a deterministic templateAnswer() if this throws or times out, so a
+  // tighter cap gets slow/stuck requests to that fallback faster instead of
+  // making the user wait out a long timeout for text the template can supply.
+  return (await gemini(system, `Question: ${question}\nFacts: ${JSON.stringify(slimFacts)}`, false, 6000, 0)).trim();
 }

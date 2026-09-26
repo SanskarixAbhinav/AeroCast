@@ -375,19 +375,52 @@
     window.speechSynthesis.speak(u);
   }
 
+  const MIC_ERR_MSG = {
+    en: {
+      insecure: "Voice input needs a secure (https://) connection.",
+      'not-allowed': "Microphone permission denied. Allow microphone access in your browser's site settings, then try again.",
+      'no-speech': "Didn't catch that — please try again.",
+      'audio-capture': "No microphone found on this device.",
+      network: "Voice input needs a network connection. Please check your connection and retry.",
+      generic: "Voice input failed. Please try again or type your question."
+    }
+  };
+  function micErrText(key) {
+    return (MIC_ERR_MSG.en[key]) || MIC_ERR_MSG.en.generic;
+  }
+
   function initMic() {
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     const micBtn = $('micBtn');
-    if (!SpeechRec) {
+    const hint = $('voiceHint');
+
+    // Voice input requires a secure context (HTTPS, or localhost). If served
+    // over plain http on a non-local host, the constructor either doesn't
+    // exist or silently fails, which used to look like "the mic button does
+    // nothing" with no explanation.
+    const isSecure = location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1';
+
+    if (!SpeechRec || !isSecure) {
       if (micBtn) micBtn.style.display = 'none';
-      if ($('voiceHint')) $('voiceHint').textContent = I18N[currentLang]?.voiceHint || '';
+      if (hint) hint.textContent = !isSecure ? micErrText('insecure') : (I18N[currentLang]?.voiceHint || '');
       return;
     }
     speechRec = new SpeechRec();
     speechRec.continuous = false;
-    speechRec.onstart = () => { micBtn.classList.add('listening'); micBtn.setAttribute('aria-label', 'Listening...'); };
+    speechRec.interimResults = false;
+    speechRec.maxAlternatives = 1;
+    speechRec.onstart = () => {
+      micBtn.classList.add('listening');
+      micBtn.setAttribute('aria-label', 'Listening...');
+      if (hint) hint.textContent = '';
+    };
     speechRec.onresult = (e) => { $('chatInput').value = e.results[0][0].transcript; };
-    speechRec.onerror = () => { micBtn.classList.remove('listening'); };
+    speechRec.onerror = (e) => {
+      micBtn.classList.remove('listening');
+      // Surface *why* it failed instead of silently doing nothing — this was
+      // the main reason the mic looked "broken" (e.g. permission denied).
+      if (hint) hint.textContent = micErrText(e?.error);
+    };
     speechRec.onend = () => {
       micBtn.classList.remove('listening');
       micBtn.setAttribute('aria-label', 'Voice input');
@@ -395,8 +428,15 @@
     };
     micBtn.addEventListener('click', () => {
       if (isPending) return;
+      if (hint) hint.textContent = '';
       speechRec.lang = LOCALES[currentLang] || 'en-IN';
-      try { speechRec.start(); } catch (_e) { speechRec.stop(); }
+      try {
+        speechRec.start();
+      } catch (_e) {
+        // "already started" is the most common throw here — stop and let the
+        // user click again rather than leaving the button inert.
+        try { speechRec.stop(); } catch (_e2) { /* no-op */ }
+      }
     });
   }
 
@@ -711,8 +751,10 @@
     if (role === 'assistant') {
       const act = el('div', 'bubble-actions');
 
-      // Speaker Button (TTS)
-      const spk = el('button', 'btn-speaker');
+      // Speaker Button (TTS) — only rendered while the "Read aloud" toggle is
+      // on. Previously this button showed on every answer regardless of the
+      // toggle, which looked like a stray control when read-aloud was off.
+      const spk = el('button', 'btn-speaker' + (isTts ? '' : ' btn-speaker-hidden'));
       spk.type = 'button';
       spk.title = 'Read aloud';
       spk.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
@@ -1044,6 +1086,12 @@
     isTts = e.target.checked;
     try { localStorage.setItem('weathergpt_tts', String(isTts)); } catch (_e) {}
     if (!isTts && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    // Show/hide the per-answer speaker buttons on messages already in the
+    // thread, not just future ones, so turning "Read aloud" off immediately
+    // removes the button instead of leaving it dangling on old replies.
+    document.querySelectorAll('#chatThread .btn-speaker').forEach((btn) => {
+      btn.classList.toggle('btn-speaker-hidden', !isTts);
+    });
   };
 
   // Map Tab Controls
