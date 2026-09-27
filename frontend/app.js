@@ -771,6 +771,8 @@
 
   // --- 6. Message & Data Card Rendering ---
   function addBubble(role, text, meta) {
+    const emptyHero = $('chatThread')?.querySelector('.chat-empty-hero');
+    if (emptyHero) emptyHero.style.display = 'none';
     const row = el('div', `chat-bubble-row ${role}`);
     row.appendChild(el('div', 'bubble-meta', role === 'user' ? 'You' : 'AeroCast'));
     const b = el('div', 'bubble', text);
