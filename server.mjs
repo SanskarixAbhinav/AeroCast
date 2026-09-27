@@ -995,9 +995,34 @@ const server = http.createServer(async (req, res) => {
   // 1. Health Endpoint
   if (pathname === '/api/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString(), service: 'AeroCast Local Server' }));
+    res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString(), service: 'AeroCast Local Server', build: 'ed273fe-v2' }));
     return;
   }
+
+  // 1b. Debug: test Open-Meteo connectivity from this server
+  if (pathname === '/api/debug' && req.method === 'GET') {
+    const t0 = Date.now();
+    const results = {};
+    const testUrls = [
+      ['geocode', 'https://geocoding-api.open-meteo.com/v1/search?name=Kolkata&count=1&language=en&format=json'],
+      ['forecast', 'https://api.open-meteo.com/v1/forecast?latitude=22.57&longitude=88.36&current=temperature_2m&timezone=auto&forecast_days=1'],
+    ];
+    for (const [label, url] of testUrls) {
+      try {
+        const r = await fetch(url, { signal: AbortSignal.timeout(8000) });
+        const body = await r.json().catch(() => null);
+        results[label] = { status: r.status, ok: r.ok, keys: body ? Object.keys(body).join(',') : 'parse_error' };
+      } catch (e) {
+        results[label] = { error: e.message };
+      }
+    }
+    results.node = process.version;
+    results.total_ms = Date.now() - t0;
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(results, null, 2));
+    return;
+  }
+
 
   // 2. Chat Endpoint (Live Local / Fallback API)
   if (pathname === '/api/chat' && req.method === 'POST') {
