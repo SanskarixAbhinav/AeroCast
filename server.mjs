@@ -59,6 +59,34 @@ const WX_TTL    = 5  * 60 * 1000;   // 5 minutes
 function geoKey(name) { return name.toLowerCase().trim(); }
 function wxKey(lat, lon) { return `${lat.toFixed(2)},${lon.toFixed(2)}`; }
 
+// Fetch with a timeout + one retry on transient failures (timeout, network
+// blip, 429, or a 5xx). A plain 4xx (bad request, not found) is not retried
+// since retrying won't change the outcome. Every failure is logged with its
+// actual reason (status code, timeout, or network error) so a broken
+// deployment shows up in the server logs instead of only ever surfacing as
+// an opaque "Weather data is unavailable" to the user with no way to tell
+// whether it was a timeout, a bad response, or something else. Mirrors the
+// retry pattern the Supabase/Deno side already has in _shared/utils.ts's
+// fetchJson - server.mjs previously had none of this for its raw fetches.
+async function fetchWithRetry(url, { timeoutMs = 6000, retries = 1, label = 'weather' } = {}) {
+  let lastReason = 'unknown error';
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      if (res.ok) return res;
+      lastReason = `HTTP ${res.status}`;
+      if (res.status !== 429 && res.status < 500) return res; // non-retryable 4xx
+    } catch (err) {
+      lastReason = (err?.name === 'TimeoutError' || err?.name === 'AbortError')
+        ? `timeout after ${timeoutMs}ms`
+        : (err?.message || String(err));
+    }
+    if (attempt < retries) await new Promise((r) => setTimeout(r, 300 * (attempt + 1)));
+  }
+  console.error(`[AeroCast] ${label} fetch failed (${retries + 1} attempt(s)): ${lastReason} — ${url.split('?')[0]}`);
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Intent helpers: date/topic/follow-up resolution.
 //
@@ -324,10 +352,13 @@ async function handleLocalChat(payload) {
     } else {
       try {
         const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(placeName)}&count=1&language=en&format=json`;
-        const gRes = await fetch(geoUrl, { signal: AbortSignal.timeout(4000) });
-        if (gRes.ok) {
-          const gData = await gRes.json();
-          if (gData.results && gData.results.length > 0) {
+        const gRes = await fetchWithRetry(geoUrl, { label: 'geocoding' });
+        if (gRes && gRes.ok) {
+          const gData = await gRes.json().catch((e) => {
+            console.error(`[AeroCast] geocoding response was not valid JSON: ${e.message}`);
+            return null;
+          });
+          if (gData?.results && gData.results.length > 0) {
             const r = gData.results[0];
             lat = r.latitude;
             lon = r.longitude;
@@ -335,13 +366,15 @@ async function handleLocalChat(payload) {
             label = [r.name, r.admin1, r.country].filter(Boolean).join(", ");
             GEO_CACHE.set(ck, { lat, lon, name, label, ts: Date.now() });
           } else {
-            geocodeFailed = true; // city not found in gazetteer
+            geocodeFailed = true; // city not found in gazetteer (or unparseable response)
           }
         } else {
-          geocodeFailed = true; // geocoding API returned an error status
+          if (gRes) console.error(`[AeroCast] geocoding fetch returned HTTP ${gRes.status}`);
+          geocodeFailed = true; // geocoding API unreachable or returned an error status
         }
-      } catch (_err) {
-        // offline or timed out
+      } catch (err) {
+        // offline, timed out, or an unexpected error - logged instead of silent
+        console.error(`[AeroCast] geocoding block threw: ${err?.stack || err}`);
         if (cached) ({ lat, lon, name, label } = cached); // use stale if available
         else geocodeFailed = true;
       }
@@ -400,10 +433,10 @@ async function handleLocalChat(payload) {
     let histRows = [];
     try {
       const hUrl = `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}&start_date=${startDate}&end_date=${endDate}&daily=temperature_2m_max,temperature_2m_min,precipitation_sum&timezone=auto`;
-      const hRes = await fetch(hUrl, { signal: AbortSignal.timeout(4000) });
-      if (hRes.ok) {
-        const hData = await hRes.json();
-        if (hData.daily?.time) {
+      const hRes = await fetchWithRetry(hUrl, { label: 'archive' });
+      if (hRes && hRes.ok) {
+        const hData = await hRes.json().catch(() => null);
+        if (hData?.daily?.time) {
           histRows = hData.daily.time.map((d, idx) => ({
             date: d,
             temp_max: Math.round(hData.daily.temperature_2m_max[idx] ?? 31),
@@ -412,7 +445,9 @@ async function handleLocalChat(payload) {
           }));
         }
       }
-    } catch (_e) {}
+    } catch (e) {
+      console.error(`[AeroCast] archive block threw: ${e?.stack || e}`);
+    }
 
     if (!histRows.length) {
       // Mock rows for July if archive unavailable
@@ -519,21 +554,28 @@ async function handleLocalChat(payload) {
     const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=pm10,pm2_5,us_aqi&timezone=auto`;
     const flUrl = `https://flood-api.open-meteo.com/v1/flood?latitude=${lat}&longitude=${lon}&daily=river_discharge&forecast_days=7`;
 
-    const TO = 4000; // 4s per API call
+    // 6s per attempt + 1 retry with backoff (see fetchWithRetry) - still
+    // well inside the frontend's 20s AbortController ceiling even in the
+    // worst case (one timeout + one retry) for every call below.
     // Fetch marine/AQ/flood whenever the RESOLVED topic needs them - not just
     // when this question's own text mentions them - so a follow-up that
     // inherited topic="marine" from context still gets wave data.
     const [fRes, mcRes, mRes, aqRes, flRes] = await Promise.all([
-      wxFromCache ? Promise.resolve(null) : fetch(fUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null),
-      wxFromCache ? Promise.resolve(null) : fetch(mcUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null),
-      topic === 'marine' ? fetch(mUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null),
-      topic === 'air_quality' ? fetch(aqUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null),
-      (topic === 'flood' || demo === 'cyclone') ? fetch(flUrl, { signal: AbortSignal.timeout(TO) }).catch(() => null) : Promise.resolve(null)
+      wxFromCache ? Promise.resolve(null) : fetchWithRetry(fUrl, { label: 'forecast' }),
+      wxFromCache ? Promise.resolve(null) : fetchWithRetry(mcUrl, { label: 'multi-model' }),
+      topic === 'marine' ? fetchWithRetry(mUrl, { label: 'marine' }) : Promise.resolve(null),
+      topic === 'air_quality' ? fetchWithRetry(aqUrl, { label: 'air-quality' }) : Promise.resolve(null),
+      (topic === 'flood' || demo === 'cyclone') ? fetchWithRetry(flUrl, { label: 'flood' }) : Promise.resolve(null)
     ]);
 
     if (fRes && fRes.ok) {
-      forecastData = await fRes.json().catch(() => null);
+      forecastData = await fRes.json().catch((e) => {
+        console.error(`[AeroCast] forecast response was not valid JSON: ${e.message}`);
+        return null;
+      });
       if (forecastData) WX_CACHE.set(wk, { forecastData, mcData, ts: Date.now() });
+    } else if (fRes) {
+      console.error(`[AeroCast] forecast fetch returned HTTP ${fRes.status}`);
     }
     if (mcRes && mcRes.ok) {
       mcData = await mcRes.json().catch(() => null);
@@ -544,8 +586,12 @@ async function handleLocalChat(payload) {
     if (mRes && mRes.ok) marineData = await mRes.json().catch(() => null);
     if (aqRes && aqRes.ok) aqData = await aqRes.json().catch(() => null);
     if (flRes && flRes.ok) flData = await flRes.json().catch(() => null);
-  } catch (_e) {
-    // handled below
+  } catch (e) {
+    // Previously fully silent, so any failure here - even an unrelated bug,
+    // not just a network issue - was invisible and only ever surfaced to the
+    // user as the generic "Weather data is unavailable" message below, with
+    // no way to tell what actually went wrong.
+    console.error(`[AeroCast] weather-fetch block threw: ${e?.stack || e}`);
   }
 
   console.log(`[AeroCast] ${name}: geo=${wxFromCache ? 'cached' : 'fresh'} fetch=${Date.now() - tFetch}ms total=${Date.now() - t0}ms`);
