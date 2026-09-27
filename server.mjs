@@ -54,7 +54,24 @@ function parseJsonBody(req) {
 const GEO_CACHE = new Map();   // city -> { lat, lon, name, label, ts }
 const WX_CACHE  = new Map();   // `${lat.toFixed(2)},${lon.toFixed(2)}` -> { data, ts }
 const GEO_TTL   = 60 * 60 * 1000;   // 1 hour
-const WX_TTL    = 5  * 60 * 1000;   // 5 minutes
+// Was 5 min - that's 4x the request volume the 20-min TTL on the Supabase
+// side uses, against a free/keyless Open-Meteo tier that rate-limits per IP.
+// On shared hosting (Render et al.) that IP is shared with unrelated apps,
+// so cutting our own call volume is the one lever we fully control.
+const WX_TTL    = 20 * 60 * 1000;   // 20 minutes
+
+// A descriptive User-Agent for every outbound call to a free/keyless public
+// API (Open-Meteo, wttr.in). Both explicitly document/recommend this for
+// non-commercial traffic - unidentified anonymous requests are the first
+// thing these services throttle, and every published wttr.in client sets one.
+const OUTBOUND_USER_AGENT = 'AeroCast-WeatherAdvisory/1.0 (+https://github.com/aerocast; contact: aerocast-team@example.com)';
+
+// Circuit breaker: once Open-Meteo answers with 429, don't immediately hit
+// it again on the very next question - every retry during an active
+// rate-limit just adds latency and digs the hole deeper. Skip straight to
+// the wttr.in fallback for a short cooldown, then try Open-Meteo again.
+const OPEN_METEO_COOLDOWN_MS = 3 * 60 * 1000; // 3 minutes
+let openMeteoBlockedUntil = 0;
 
 function geoKey(name) { return name.toLowerCase().trim(); }
 function wxKey(lat, lon) { return `${lat.toFixed(2)},${lon.toFixed(2)}`; }
@@ -72,7 +89,13 @@ async function fetchWithRetry(url, { timeoutMs = 10000, retries = 2, label = 'we
   let lastReason = 'unknown error';
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: { 'User-Agent': OUTBOUND_USER_AGENT, 'Accept': 'application/json' },
+      });
+      if (res.status === 429 && /open-meteo\.com/.test(url)) {
+        openMeteoBlockedUntil = Date.now() + OPEN_METEO_COOLDOWN_MS;
+      }
       if (res.ok) return res;
       lastReason = `HTTP ${res.status}`;
       if (res.status !== 429 && res.status < 500) return res; // non-retryable 4xx
@@ -564,9 +587,15 @@ async function handleLocalChat(payload) {
     // Fetch marine/AQ/flood whenever the RESOLVED topic needs them - not just
     // when this question's own text mentions them - so a follow-up that
     // inherited topic="marine" from context still gets wave data.
+    // While Open-Meteo is in an active rate-limit cooldown, don't spend
+    // retries proving that again - go straight to the wttr.in fallback below
+    // (fRes stays null) and skip the non-essential model-comparison call
+    // entirely, so the one Open-Meteo request we do send (once the cooldown
+    // ends) isn't competing with a second one for the same quota.
+    const openMeteoCoolingDown = Date.now() < openMeteoBlockedUntil;
     const [fRes, mcRes, mRes, aqRes, flRes] = await Promise.all([
-      wxFromCache ? Promise.resolve(null) : fetchWithRetry(fUrl, { label: 'forecast' }),
-      wxFromCache ? Promise.resolve(null) : fetchWithRetry(mcUrl, { label: 'multi-model' }),
+      (wxFromCache || openMeteoCoolingDown) ? Promise.resolve(null) : fetchWithRetry(fUrl, { label: 'forecast' }),
+      (wxFromCache || openMeteoCoolingDown) ? Promise.resolve(null) : fetchWithRetry(mcUrl, { label: 'multi-model' }),
       topic === 'marine' ? fetchWithRetry(mUrl, { label: 'marine' }) : Promise.resolve(null),
       topic === 'air_quality' ? fetchWithRetry(aqUrl, { label: 'air-quality' }) : Promise.resolve(null),
       (topic === 'flood' || demo === 'cyclone') ? fetchWithRetry(flUrl, { label: 'flood' }) : Promise.resolve(null)
@@ -578,11 +607,13 @@ async function handleLocalChat(payload) {
         return null;
       });
       if (forecastData) WX_CACHE.set(wk, { forecastData, mcData, ts: Date.now() });
-    } else if (fRes && fRes.status === 429) {
-      // Open-Meteo rate-limits Render's shared IPs with HTTP 429.
-      // Fall back to wttr.in which has independent rate limits and
-      // returns real forecast data (3 days) in JSON format.
-      console.warn(`[AeroCast] Open-Meteo 429 for ${name} — trying wttr.in fallback`);
+    } else if ((fRes && fRes.status === 429) || (!fRes && !wxFromCache && openMeteoCoolingDown)) {
+      // Open-Meteo rate-limits Render's shared IPs with HTTP 429 - either
+      // just now (fRes.status === 429) or recently enough that we skipped
+      // asking again this time (openMeteoCoolingDown, fRes === null).
+      // Either way, fall back to wttr.in, which has independent rate limits
+      // and returns real forecast data (3 days) in JSON format.
+      console.warn(`[AeroCast] Open-Meteo 429/cooldown for ${name} — trying wttr.in fallback`);
       try {
         const wttrUrl = `https://wttr.in/${encodeURIComponent(name)}?format=j1`;
         const wttrRes = await fetchWithRetry(wttrUrl, { timeoutMs: 8000, retries: 1, label: 'wttr-fallback' });
