@@ -88,10 +88,10 @@ async function gemini(
         contents: [{ role: "user", parts: [{ text: user }] }],
         generationConfig: {
           temperature: asJson ? 0 : 0.3,
-          // Lower token ceilings = the model stops sooner = faster wall-clock
-          // response, and 3-sentence narrations / short JSON never needed
-          // anywhere close to these caps.
-          maxOutputTokens: asJson ? 90 : 140,
+          // Raised caps: JSON intent can be ~150 chars when all fields are
+          // populated; 200 gives headroom. Narration in Indic languages uses
+          // more tokens per word, so 250 prevents mid-sentence truncation.
+          maxOutputTokens: asJson ? 200 : 250,
           ...(asJson ? { responseMimeType: "application/json" } : {}),
         },
       }),

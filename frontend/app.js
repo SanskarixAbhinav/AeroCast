@@ -406,27 +406,52 @@
       if (hint) hint.textContent = !isSecure ? micErrText('insecure') : (I18N[currentLang]?.voiceHint || '');
       return;
     }
-    speechRec = new SpeechRec();
-    speechRec.continuous = false;
-    speechRec.interimResults = false;
-    speechRec.maxAlternatives = 1;
-    speechRec.onstart = () => {
-      micBtn.classList.add('listening');
-      micBtn.setAttribute('aria-label', 'Listening...');
-      if (hint) hint.textContent = '';
-    };
-    speechRec.onresult = (e) => { $('chatInput').value = e.results[0][0].transcript; };
-    speechRec.onerror = (e) => {
-      micBtn.classList.remove('listening');
-      // Surface *why* it failed instead of silently doing nothing — this was
-      // the main reason the mic looked "broken" (e.g. permission denied).
-      if (hint) hint.textContent = micErrText(e?.error);
-    };
-    speechRec.onend = () => {
-      micBtn.classList.remove('listening');
-      micBtn.setAttribute('aria-label', 'Voice input');
-      if ($('chatInput').value.trim() && !isPending) sendMsg($('chatInput').value.trim());
-    };
+
+    function createRec() {
+      const rec = new SpeechRec();
+      rec.continuous = false;
+      rec.interimResults = false;
+      rec.maxAlternatives = 1;
+      return rec;
+    }
+
+    function bindRec(rec) {
+      rec.onstart = () => {
+        micBtn.classList.add('listening');
+        micBtn.setAttribute('aria-label', 'Listening...');
+        if (hint) hint.textContent = '';
+      };
+      rec.onresult = (e) => { $('chatInput').value = e.results[0][0].transcript; };
+      rec.onerror = (e) => {
+        micBtn.classList.remove('listening');
+        micBtn.setAttribute('aria-label', 'Voice input');
+        if (e?.error === 'network') {
+          // Chrome's cloud STT is unreachable. Show the error + a retry hint.
+          // Re-create the recognition object so the next click starts fresh
+          // (Chrome marks the old one as permanently failed after a network error).
+          if (hint) {
+            hint.textContent = micErrText('network') + ' (Click 🎤 to retry)';
+          }
+          // Recreate so the next click attempt is fresh
+          speechRec = createRec();
+          bindRec(speechRec);
+        } else if (e?.error === 'not-allowed') {
+          if (hint) hint.textContent = micErrText('not-allowed');
+          if (micBtn) micBtn.style.display = 'none'; // permission denied is permanent
+        } else {
+          if (hint) hint.textContent = micErrText(e?.error);
+        }
+      };
+      rec.onend = () => {
+        micBtn.classList.remove('listening');
+        micBtn.setAttribute('aria-label', 'Voice input');
+        if ($('chatInput').value.trim() && !isPending) sendMsg($('chatInput').value.trim());
+      };
+    }
+
+    speechRec = createRec();
+    bindRec(speechRec);
+
     micBtn.addEventListener('click', () => {
       if (isPending) return;
       if (hint) hint.textContent = '';
@@ -434,9 +459,11 @@
       try {
         speechRec.start();
       } catch (_e) {
-        // "already started" is the most common throw here — stop and let the
-        // user click again rather than leaving the button inert.
+        // "already started" or stale object — recreate and retry once
         try { speechRec.stop(); } catch (_e2) { /* no-op */ }
+        speechRec = createRec();
+        bindRec(speechRec);
+        try { speechRec.start(); } catch (_e3) { /* no-op */ }
       }
     });
   }

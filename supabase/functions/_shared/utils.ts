@@ -29,8 +29,11 @@ export function background(promise: PromiseLike<any>): void {
 }
 
 // fetch + JSON with a timeout and simple retry.
+// Timeout is intentionally generous (12 s) because Open-Meteo's geocoding
+// and forecast endpoints are called from Supabase Edge Function servers whose
+// egress latency to Open-Meteo can be higher than a browser's direct call.
 // deno-lint-ignore no-explicit-any
-export async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 7000, retries = 1): Promise<any> {
+export async function fetchJson(url: string, init: RequestInit = {}, timeoutMs = 12000, retries = 2): Promise<any> {
   let lastErr: unknown;
   for (let i = 0; i <= retries; i++) {
     try {
@@ -39,6 +42,7 @@ export async function fetchJson(url: string, init: RequestInit = {}, timeoutMs =
       return await res.json();
     } catch (e) {
       lastErr = e;
+      if (i < retries) await new Promise((r) => setTimeout(r, 400 * (i + 1)));
     }
   }
   throw lastErr;
