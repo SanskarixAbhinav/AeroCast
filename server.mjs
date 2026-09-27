@@ -578,6 +578,63 @@ async function handleLocalChat(payload) {
         return null;
       });
       if (forecastData) WX_CACHE.set(wk, { forecastData, mcData, ts: Date.now() });
+    } else if (fRes && fRes.status === 429) {
+      // Open-Meteo rate-limits Render's shared IPs with HTTP 429.
+      // Fall back to wttr.in which has independent rate limits and
+      // returns real forecast data (3 days) in JSON format.
+      console.warn(`[AeroCast] Open-Meteo 429 for ${name} — trying wttr.in fallback`);
+      try {
+        const wttrUrl = `https://wttr.in/${encodeURIComponent(name)}?format=j1`;
+        const wttrRes = await fetchWithRetry(wttrUrl, { timeoutMs: 8000, retries: 1, label: 'wttr-fallback' });
+        if (wttrRes && wttrRes.ok) {
+          const wttr = await wttrRes.json().catch(() => null);
+          if (wttr && wttr.weather) {
+            const cur = wttr.current_condition && wttr.current_condition[0];
+            const days = wttr.weather.slice(0, 7);
+            forecastData = {
+              current: {
+                time: new Date().toISOString(),
+                temperature_2m: cur ? parseFloat(cur.temp_C) : null,
+                relative_humidity_2m: cur ? parseFloat(cur.humidity) : null,
+                precipitation: 0,
+                wind_speed_10m: cur ? parseFloat(cur.windspeedKmph) : null,
+                wind_gusts_10m: cur ? Math.round(parseFloat(cur.windspeedKmph) * 1.4) : null,
+              },
+              daily: {
+                time: days.map(d => d.date),
+                temperature_2m_max: days.map(d => parseFloat(d.maxtempC)),
+                temperature_2m_min: days.map(d => parseFloat(d.mintempC)),
+                precipitation_sum: days.map(d => {
+                  const h = d.hourly || [];
+                  return Math.round(h.reduce((s, x) => s + parseFloat(x.precipMM || 0), 0) * 10) / 10;
+                }),
+                precipitation_probability_max: days.map(d => {
+                  const h = d.hourly || [];
+                  return h.length ? Math.max(...h.map(x => parseFloat(x.chanceofrain || 0))) : 0;
+                }),
+                wind_speed_10m_max: days.map(d => {
+                  const h = d.hourly || [];
+                  return h.length ? Math.round(Math.max(...h.map(x => parseFloat(x.windspeedKmph || 0)))) : 0;
+                }),
+                wind_gusts_10m_max: days.map(d => {
+                  const h = d.hourly || [];
+                  return h.length ? Math.round(Math.max(...h.map(x => parseFloat(x.windspeedKmph || 0))) * 1.4) : 0;
+                }),
+                et0_fao_evapotranspiration: days.map(() => 3.5),
+                uv_index_max: days.map(d => {
+                  const h = d.hourly || [];
+                  return h.length ? Math.max(...h.map(x => parseFloat(x.uvIndex || 0))) : 0;
+                }),
+              },
+              hourly: { time: [], temperature_2m: [], precipitation_probability: [], wind_speed_10m: [], relative_humidity_2m: [] }
+            };
+            WX_CACHE.set(wk, { forecastData, mcData, ts: Date.now() });
+            console.log(`[AeroCast] wttr.in fallback OK for ${name}`);
+          }
+        }
+      } catch (wttrErr) {
+        console.error(`[AeroCast] wttr.in fallback failed: ${wttrErr.message}`);
+      }
     } else if (fRes) {
       console.error(`[AeroCast] forecast fetch returned HTTP ${fRes.status}`);
     }
