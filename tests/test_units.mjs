@@ -48,12 +48,45 @@ function templateAnswer(f) {
 }
 
 // 2. Dates
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+function weekdayOf(dateStr) {
+  return new Date(`${dateStr}T00:00:00Z`).getUTCDay();
+}
+
 function resolveIndex(hint, rows) {
   const h = (hint ?? "today").trim();
   if (!h || h === "today") return 0;
   if (h === "tomorrow") return 1;
   if (h === "day_after") return 2;
+
+  const weekdayHint = h.match(/^next_(sunday|monday|tuesday|wednesday|thursday|friday|saturday)$/i);
+  if (weekdayHint) {
+    const target = WEEKDAYS.indexOf(weekdayHint[1].toLowerCase());
+    for (let i = 1; i < rows.length; i++) {
+      if (weekdayOf(rows[i].date) === target) return i;
+    }
+    return -1;
+  }
+
+  if (h === "this_weekend") {
+    for (let i = 0; i < rows.length; i++) {
+      const wd = weekdayOf(rows[i].date);
+      if (wd === 6 || (i === 0 && wd === 0)) return i;
+    }
+    return -1;
+  }
+
   return rows.findIndex((r) => r.date === h);
+}
+
+function timeRangeHours(range) {
+  switch (range) {
+    case "morning": return [6, 12];
+    case "afternoon": return [12, 17];
+    case "evening": return [17, 20];
+    case "night": return [20, 24];
+    default: return null;
+  }
 }
 
 function clampHistory(start, end) {
@@ -205,6 +238,58 @@ assert.strictEqual(resolveIndex("day_after", mockRows), 2);
 assert.strictEqual(resolveIndex("2026-09-27", mockRows), 2);
 assert.strictEqual(resolveIndex("2026-10-15", mockRows), -1);
 console.log("✔ Date resolution passed");
+
+// Test 2b: "next <weekday>" and "this weekend" — a full 7-day window.
+// 2026-09-27 is a Sunday (verified against weekdayOf below), so:
+// Sun(idx0) Mon(1) Tue(2) Wed(3) Thu(4) Fri(5) Sat(6) Sun(7, out of window)
+const weekRows = [
+  { date: "2026-09-27" }, // Sunday - "today"
+  { date: "2026-09-28" }, // Monday
+  { date: "2026-09-29" }, // Tuesday
+  { date: "2026-09-30" }, // Wednesday
+  { date: "2026-10-01" }, // Thursday
+  { date: "2026-10-02" }, // Friday
+  { date: "2026-10-03" }, // Saturday
+];
+assert.strictEqual(weekdayOf("2026-09-27"), 0); // Sunday
+assert.strictEqual(resolveIndex("next_monday", weekRows), 1);
+assert.strictEqual(resolveIndex("next_saturday", weekRows), 6);
+// "next Sunday" when today IS Sunday means next week's Sunday - outside this window.
+assert.strictEqual(resolveIndex("next_sunday", weekRows), -1);
+// Today (index 0) is itself a Sunday here, so "this weekend" means today -
+// the tail end of the current weekend - not next Saturday, six days away.
+assert.strictEqual(resolveIndex("this_weekend", weekRows), 0);
+
+// A window that opens on a weekday - "this weekend" should find the
+// upcoming Saturday, not roll over into the following week.
+const weekdayOpenRows = [
+  { date: "2026-09-28" }, // Monday - "today"
+  { date: "2026-09-29" }, // Tuesday
+  { date: "2026-09-30" }, // Wednesday
+  { date: "2026-10-01" }, // Thursday
+  { date: "2026-10-02" }, // Friday
+  { date: "2026-10-03" }, // Saturday
+  { date: "2026-10-04" }, // Sunday
+];
+assert.strictEqual(resolveIndex("this_weekend", weekdayOpenRows), 5);
+
+// A window that opens mid-weekend (today is itself a Saturday).
+const weekendOpenRows = [
+  { date: "2026-10-03" }, // Saturday - "today"
+  { date: "2026-10-04" }, // Sunday
+  { date: "2026-10-05" }, // Monday
+];
+assert.strictEqual(resolveIndex("this_weekend", weekendOpenRows), 0);
+console.log("✔ Weekday / weekend date resolution passed");
+
+// Test 2c: time-of-day -> hour-range mapping
+assert.deepStrictEqual(timeRangeHours("morning"), [6, 12]);
+assert.deepStrictEqual(timeRangeHours("afternoon"), [12, 17]);
+assert.deepStrictEqual(timeRangeHours("evening"), [17, 20]);
+assert.deepStrictEqual(timeRangeHours("night"), [20, 24]);
+assert.strictEqual(timeRangeHours(null), null);
+assert.strictEqual(timeRangeHours("whenever"), null);
+console.log("✔ Time-of-day hour-range mapping passed");
 
 // Test 3: History clamping
 assert.strictEqual(clampHistory("invalid", "2026-01-01"), null);

@@ -13,6 +13,7 @@
   const LOCALES = { en: 'en-IN', hi: 'hi-IN', bn: 'bn-IN', ta: 'ta-IN', te: 'te-IN', mr: 'mr-IN' };
   let currentLang = (typeof localStorage !== 'undefined' && localStorage.getItem('weathergpt_lang')) || 'en';
   let isCyclone = false;
+  let lastContext = null; // { location, topic } from the previous answer's meta.context - lets follow-ups like "What about tomorrow?" or "Will it rain?" omit the place/topic they already gave.
   let isTts = (typeof localStorage !== 'undefined' && localStorage.getItem('weathergpt_tts') === 'true') || false;
   let isPending = false;
   let speechRec = null;
@@ -992,7 +993,7 @@
     $('sendBtn').disabled = true;
     $('typingIndicator').style.display = 'flex';
 
-    const payload = { q, lang: currentLang, ...(isCyclone ? { demo: 'cyclone' } : {}) };
+    const payload = { q, lang: currentLang, ...(isCyclone ? { demo: 'cyclone' } : {}), ...(lastContext ? { context: lastContext } : {}) };
 
     try {
       let data;
@@ -1023,6 +1024,7 @@
         const ans = data.answer || 'Weather information received.';
         addBubble('assistant', ans, data.meta);
         renderData(data.facts, data.alerts, data.meta);
+        if (data.meta?.context) lastContext = data.meta.context; // remember for the next follow-up turn
         if (isTts) speak(ans);
         window.dispatchEvent(new CustomEvent('aerocast:query-answered', {
           detail: { question: q, lang: currentLang, location: data.facts?.location || null, topic: data.facts?.topic || null }

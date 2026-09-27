@@ -26,23 +26,51 @@ const q = new URLSearchParams({
   longitude: String(place.longitude),
   timezone: "auto",
   forecast_days: "7",
-  current: "temperature_2m,relative_humidity_2m,precipitation,wind_speed_10m,wind_gusts_10m",
+  current: [
+    "temperature_2m",
+    "relative_humidity_2m",
+    "apparent_temperature",
+    "precipitation",
+    "wind_speed_10m",
+    "wind_gusts_10m",
+    "cloud_cover",
+    "weather_code",
+  ].join(","),
   daily: [
     "temperature_2m_max",
     "temperature_2m_min",
+    "apparent_temperature_max",
+    "apparent_temperature_min",
     "precipitation_sum",
     "precipitation_probability_max",
     "wind_speed_10m_max",
     "wind_gusts_10m_max",
     "et0_fao_evapotranspiration",
+    "uv_index_max",
+    "sunrise",
+    "sunset",
+    "weather_code",
   ].join(","),
-  hourly: "precipitation_probability,wind_speed_10m,temperature_2m",
+  hourly: "precipitation_probability,wind_speed_10m,temperature_2m,relative_humidity_2m,cloud_cover,visibility,uv_index",
 });
 const fcData = await fetchJson(`https://api.open-meteo.com/v1/forecast?${q}`);
 assert.ok(fcData.current, "Forecast has current weather");
 assert.ok(fcData.daily && fcData.daily.time.length === 7, "Forecast has 7 daily rows");
 assert.ok(fcData.hourly && fcData.hourly.time.length > 0, "Forecast has hourly rows");
+// Multi-variable weather-question support (needs[]/facts.requested) relies
+// on these specific fields actually coming back from Open-Meteo.
+assert.ok(fcData.current.apparent_temperature !== undefined, "current has apparent_temperature");
+assert.ok(fcData.current.cloud_cover !== undefined, "current has cloud_cover");
+assert.ok(fcData.current.weather_code !== undefined, "current has weather_code");
+assert.ok(Array.isArray(fcData.daily.apparent_temperature_max), "daily has apparent_temperature_max");
+assert.ok(Array.isArray(fcData.daily.uv_index_max), "daily has uv_index_max");
+assert.ok(Array.isArray(fcData.daily.sunrise) && Array.isArray(fcData.daily.sunset), "daily has sunrise/sunset");
+assert.ok(Array.isArray(fcData.daily.weather_code), "daily has weather_code");
+assert.ok(Array.isArray(fcData.hourly.relative_humidity_2m), "hourly has relative_humidity_2m");
+assert.ok(Array.isArray(fcData.hourly.cloud_cover), "hourly has cloud_cover");
+assert.ok(Array.isArray(fcData.hourly.visibility), "hourly has visibility");
 console.log(`✔ Forecast received: Current Temp = ${fcData.current.temperature_2m}°C, 7-day forecast available`);
+console.log("✔ New multi-variable fields (apparent temp, UV, sunrise/sunset, weather code, humidity, cloud cover, visibility) present in live response");
 
 // 3. Archive API
 console.log("3. Testing Archive API...");

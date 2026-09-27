@@ -17,8 +17,12 @@ export const json = (body: unknown, status = 200) =>
 // serve`) it still fires immediately and simply isn't guaranteed to finish -
 // acceptable since every caller already treats these writes as best-effort.
 // deno-lint-ignore no-explicit-any
-export function background(promise: Promise<any>): void {
-  const p = promise.catch(() => {});
+export function background(promise: PromiseLike<any>): void {
+  // Promise.resolve() adopts thenables (e.g. Supabase's PostgrestFilterBuilder,
+  // which implements PromiseLike but not the full Promise interface) into a
+  // real native Promise, so .catch() below is always safe to call. For values
+  // that are already native Promises this is a no-op passthrough.
+  const p = Promise.resolve(promise).catch(() => {});
   // deno-lint-ignore no-explicit-any
   const edgeRuntime = (globalThis as any).EdgeRuntime;
   if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(p);

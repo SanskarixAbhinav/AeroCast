@@ -4,6 +4,7 @@ import { narrate, parseIntent } from "../_shared/llm.ts";
 import { geocode } from "../_shared/location.ts";
 import {
   dailyRows,
+  dayAggregates,
   extractMarine,
   extractModelComparison,
   getForecast,
@@ -13,27 +14,44 @@ import {
   historyRows,
   hourlyWindow,
   round1,
+  timeWindowStats,
 } from "../_shared/weather.ts";
 import { computeAlerts, cycloneAlerts } from "../_shared/alerts.ts";
 import type { Alert } from "../_shared/alerts.ts";
 import { advise } from "../_shared/advisory.ts";
 import { numbersOk, templateAnswer } from "../_shared/guard.ts";
-import { clampHistory, resolveIndex } from "../_shared/dates.ts";
+import { clampHistory, resolveIndex, timeRangeHours } from "../_shared/dates.ts";
+import { resolveFollowUp } from "../_shared/followup.ts";
+import type { ChatContext } from "../_shared/followup.ts";
 
 const RATE_LIMIT_PER_MIN = 20;
 
 // deno-lint-ignore no-explicit-any
 type Log = Record<string, any>;
 
-async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
+async function handleChat(q: string, langIn: unknown, demo: unknown, contextIn: unknown, log: Log) {
   const timings: Record<string, number> = {};
   const mark = (name: string, since: number) => { timings[name] = Date.now() - since; };
 
   // 1. Parse the question into structured intent (heuristic first, Gemini only as fallback - see llm.ts)
   let t = Date.now();
-  const intent = await parseIntent(q);
+  const parsed = await parseIntent(q);
   mark("intent_ms", t);
   log.intent_ms = timings.intent_ms;
+
+  // 1b. Follow-up handling: fill in whatever THIS question left unspecified
+  // (place, topic) from the previous turn's resolved context, if the client
+  // sent one back. Never overrides anything the question itself stated.
+  const context: ChatContext | null =
+    contextIn && typeof contextIn === "object"
+      ? {
+        location: typeof (contextIn as Log).location === "string" ? (contextIn as Log).location : null,
+        topic: typeof (contextIn as Log).topic === "string" ? (contextIn as Log).topic : null,
+      }
+      : null;
+  const intent = resolveFollowUp(parsed, context);
+  log.context_in = context;
+
   const lang = typeof langIn === "string" && langIn ? langIn : intent.language; // dropdown wins
   log.lang = lang;
   log.intent = intent;
@@ -114,6 +132,77 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
       facts.day = rows[i];
       if (intent.topic === "forecast") facts.daily = rows;
 
+      // Part-of-day narrowing ("tomorrow afternoon", "tonight") - independent
+      // of which date was resolved above.
+      const bounds = timeRangeHours(intent.time_range);
+      if (bounds) {
+        const tw = timeWindowStats(fc.data, rows[i].date, bounds);
+        if (tw) facts.time_window = { range: intent.time_range, ...tw };
+      }
+
+      // Multi-variable weather questions ("temperature, humidity and wind
+      // tomorrow") - `intent.needs` lists every specific variable the
+      // question asked about (see llm.ts), independent of `topic`. Only the
+      // variables actually named go into facts.requested, each with real
+      // Open-Meteo values; narrate() is told to explain only these and
+      // invent nothing else.
+      if (intent.needs.length) {
+        const day = rows[i];
+        const tw = facts.time_window as { temp_min: number; temp_max: number; rain_prob_max: number | null; wind_max_kmh: number } | undefined;
+        const agg = dayAggregates(fc.data, day.date);
+        // deno-lint-ignore no-explicit-any
+        const requested: Record<string, any> = {};
+        for (const need of intent.needs) {
+          switch (need) {
+            case "temperature":
+              requested.temperature = tw
+                ? { min_c: tw.temp_min, max_c: tw.temp_max }
+                : { min_c: day.temp_min, max_c: day.temp_max };
+              break;
+            case "apparent_temperature":
+              requested.apparent_temperature = { min_c: day.apparent_temp_min, max_c: day.apparent_temp_max };
+              break;
+            case "precipitation":
+              requested.precipitation = { mm: day.rain_mm };
+              break;
+            case "rain":
+              requested.rain = { mm: day.rain_mm };
+              break;
+            case "precipitation_probability":
+              requested.precipitation_probability = { percent: tw ? tw.rain_prob_max : day.rain_prob };
+              break;
+            case "humidity":
+              requested.humidity = { mean_percent: agg.humidity_mean_pct, max_percent: agg.humidity_max_pct };
+              break;
+            case "wind_speed":
+              requested.wind_speed = { max_kmh: tw ? tw.wind_max_kmh : day.wind_max_kmh };
+              break;
+            case "wind_gusts":
+              requested.wind_gusts = { max_kmh: day.gust_max_kmh };
+              break;
+            case "cloud_cover":
+              requested.cloud_cover = { mean_percent: agg.cloud_cover_mean_pct, max_percent: agg.cloud_cover_max_pct };
+              break;
+            case "visibility":
+              requested.visibility = { mean_km: agg.visibility_mean_km, min_km: agg.visibility_min_km };
+              break;
+            case "uv_index":
+              requested.uv_index = { max: day.uv_index_max };
+              break;
+            case "sunrise":
+              requested.sunrise = { time: day.sunrise };
+              break;
+            case "sunset":
+              requested.sunset = { time: day.sunset };
+              break;
+            case "weather_condition":
+              requested.weather_condition = { code: day.weather_code, text: day.weather_text };
+              break;
+          }
+        }
+        facts.requested = requested;
+      }
+
       // Marine Advisory handling
       let marineData = null;
       if (intent.topic === "marine") {
@@ -178,6 +267,12 @@ async function handleChat(q: string, langIn: unknown, demo: unknown, log: Log) {
   mark("narrate_ms", t);
   log.timings = timings;
 
+  // Hand back what THIS turn resolved so the client can round-trip it as
+  // `context` on its next request, enabling follow-ups like "What about the
+  // day after tomorrow?" or "Will it rain?" that don't repeat the place.
+  const outContext: ChatContext = { location: facts.location, topic: intent.topic };
+  meta.context = outContext;
+
   // The UI draws its data card from `facts` (raw API values), never from `answer`.
   const { alerts: _dup, ...factsOut } = facts;
   return { answer, facts: factsOut, alerts, meta };
@@ -219,7 +314,7 @@ Deno.serve(async (req) => {
       // Proceed if rate check cannot reach DB
     }
 
-    body = await handleChat(q, input.lang, input.demo, log);
+    body = await handleChat(q, input.lang, input.demo, input.context, log);
   } catch (e) {
     log.error = String(e).slice(0, 300);
     log.stack = (e instanceof Error ? e.stack ?? "" : "").slice(0, 500);

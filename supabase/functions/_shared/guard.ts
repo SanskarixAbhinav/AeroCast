@@ -31,10 +31,35 @@ export function templateAnswer(f: any): string {
     parts.push(
       `${f.location}, ${f.history.start} to ${f.history.end}: total rain ${f.history.total_rain_mm} mm, average maximum temperature ${f.history.avg_temp_max} C.`,
     );
+  } else if (f.time_window) {
+    const tw = f.time_window;
+    parts.push(
+      `${f.location}, ${f.day?.date ?? ""} ${tw.range} (${tw.hours}): ${tw.temp_min} to ${tw.temp_max} C${
+        tw.rain_prob_max != null ? `, rain chance up to ${tw.rain_prob_max}%` : ""
+      }, wind up to ${tw.wind_max_kmh} km/h.`,
+    );
   } else if (f.day) {
     parts.push(
       `${f.location} on ${f.day.date}: ${f.day.temp_min} to ${f.day.temp_max} C, rain ${f.day.rain_mm} mm (${f.day.rain_prob ?? "unknown"}% chance), wind up to ${f.day.wind_max_kmh} km/h.`,
     );
+  }
+  // Facts for specific variables the question named (see llm.ts `needs` /
+  // chat/index.ts facts.requested). Skip temperature/rain/precipitation/
+  // wind_speed here — those are already covered by the f.day/time_window
+  // sentence above — and only add what that sentence doesn't say.
+  if (f.requested) {
+    const r = f.requested;
+    const bits: string[] = [];
+    if (r.apparent_temperature) bits.push(`feels like ${r.apparent_temperature.min_c} to ${r.apparent_temperature.max_c} C`);
+    if (r.humidity) bits.push(`humidity around ${r.humidity.mean_percent}%`);
+    if (r.wind_gusts) bits.push(`gusts up to ${r.wind_gusts.max_kmh} km/h`);
+    if (r.cloud_cover) bits.push(`cloud cover around ${r.cloud_cover.mean_percent}%`);
+    if (r.visibility) bits.push(`visibility around ${r.visibility.mean_km} km`);
+    if (r.uv_index) bits.push(`UV index ${r.uv_index.max}`);
+    if (r.sunrise) bits.push(`sunrise ${r.sunrise.time}`);
+    if (r.sunset) bits.push(`sunset ${r.sunset.time}`);
+    if (r.weather_condition) bits.push(`condition: ${r.weather_condition.text}`);
+    if (bits.length) parts.push(`${bits.join(", ")}.`);
   }
   if (f.flags) {
     const why = (f.flags.reason ?? []).join(", ");

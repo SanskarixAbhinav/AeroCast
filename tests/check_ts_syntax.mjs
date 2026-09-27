@@ -14,6 +14,7 @@ const files = [
   'supabase/functions/_shared/dates.ts',
   'supabase/functions/_shared/guard.ts',
   'supabase/functions/_shared/llm.ts',
+  'supabase/functions/_shared/followup.ts',
 ];
 
 console.log('Validating TypeScript syntax for all Edge Function files...');
