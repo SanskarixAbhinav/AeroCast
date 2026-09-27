@@ -695,7 +695,6 @@ async function handleLocalChat(payload) {
         topic, location: label, lat, lon, stale: true,
         day: daily[0],
         daily,
-        flags: flags || undefined,
         alerts: []
       },
       alerts: [],
